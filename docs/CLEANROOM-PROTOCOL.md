@@ -72,27 +72,39 @@ Where SPEC.md marks a finding REA-OPEN, implement BOTH candidates and make
 the choice selectable and reported in the output -- never silently pick one.
 ```
 
-## 4. Attestation status — read this before claiming the rule is satisfied
-
-Stated plainly, because the value of this document depends on it.
+## 4. Attestation status — executed and signed
 
 | | status |
 |---|---|
-| `SPEC.md` written before the engine, and frozen | **yes** |
+| `SPEC.md` written before the engine, and frozen | **yes** — v1.0 at commit `aad154e`, tag `spec-frozen-v1.0` |
 | Implementation traceable to `SPEC.md` findings only, machine checked | **yes** (`compliance_check.py` C-4) |
-| No recorded G\*Power output anywhere under `src/` | **yes** (§5.3) |
-| Analysis and implementation performed in **two separate agent sessions** | **NOT YET — unsigned** |
+| No recorded G\*Power output anywhere under `src/` | **yes** (§5b.3) |
+| Analysis and implementation performed in **two separate agent sessions** | **yes — signed** |
+| Second implementation holds to the same contract | **CONFORMING** — 401/401, every SPEC property, 300/300 cross-grid |
+| Lexical independence verified after the fact | Jaccard `0.204`, 0 identical comment lines |
 
-The specification-first discipline was followed, and the artefacts it produces
-(a complete `SPEC.md`, the traceability links, the generated vector file) are
-all present and checkable. The *procedural* half of Rule 2 — two genuinely
-separate sessions — has not been executed, and this repository does not pretend
-otherwise. [SESSION-LOG.md](SESSION-LOG.md) records what each phase actually
-did, and carries an unsigned attestation line.
+The full record, with its caveats, is in
+[SESSION-LOG.md § Attestation 2](SESSION-LOG.md). The boundary was enforced by
+the handover prompt of §3 plus a physically separate input directory containing
+only `SPEC.md` and `INTERFACE.md` — **not** by a sandbox. That is why the
+overlap report exists: it is evidence after the fact rather than proof up
+front, and this document says so rather than implying more.
 
-Executing it takes about ten minutes and is scripted in §6. Until it is done,
-read §3's prompt as *the handover that is ready to be used*, not as one that
-already was.
+### What it cost, and what it returned
+
+One agent session. It returned five specification defects — five places where
+two competent readers of the same document produced different numbers — one of
+which was a **wrong answer** in the shipped engine, plus three numerical
+improvements the engine then adopted. Details in
+[EVIDENCE/E-013](EVIDENCE/E-013-cleanroom-divergence.md).
+
+That is the argument for the protocol, and it is worth stating as a claim
+rather than a platitude: **a specification that has only ever been implemented
+once has not been tested.** Every test of a single implementation is a test of
+its self-consistency. `G-05` is the proof — the engine had property tests,
+round-trip tests, an independent SciPy re-derivation and a third-party
+agreement oracle, and all four were blind to it, because all four went through
+the same bracket.
 
 ## 5. Specification gaps closed before the engine was written
 
@@ -230,8 +242,34 @@ of `SPEC.md` than any prose about it. If it *diverges*, the divergence is a
 specification bug first and an implementation bug second: read the gap report
 Session B was asked to produce, and fix `SPEC.md`.
 
+### Then probe the gaps — this is where the value is
+
+Conformance is the easy half. The gap report is the other half, and a reported
+gap only matters if it actually bites, so each one gets run on both
+implementations:
+
+```console
+$ python tools/probe_spec_gaps.py
+[DIVERGE ] G-01  sign rule of the compromise analysis (one tail, negative ES)
+            shipped alpha=0.1327324 vs cleanroom alpha=0.8672676
+...
+  AGREE: 8, DIVERGE: 3, N/A: 1
+```
+
+Each region is probed with inputs *inside* the underspecified part of the
+domain. A `DIVERGE` row is a live specification defect; an `AGREE` row means
+the gap is real but latent. On this repository's run, five of twelve diverged
+and one of those five was a wrong answer rather than a convention
+([E-013](EVIDENCE/E-013-cleanroom-divergence.md)).
+
+Fix each divergence in `SPEC.md`, not in whichever implementation you happen
+to prefer — and where the resolution is a *choice* rather than a derivation,
+say so. [F-13](../SPEC.md#f-13--points-the-specification-left-undetermined-now-specified)
+is that table.
+
 ### Signing
 
-Record the outcome in [SESSION-LOG.md](SESSION-LOG.md): the two branch names,
-the two commit hashes, the date, and the test result. That table is the
-attestation; it is unsigned until you fill it in.
+Record the outcome in [SESSION-LOG.md](SESSION-LOG.md): the handover commit
+and tag, what was withheld, the conformance verdict, the overlap figures, the
+defects found, and the caveats. That table is the attestation. On this
+repository it is **signed** — see §4.

@@ -15,7 +15,7 @@ help:
 	@echo "compliance   submission rules, as a machine check"
 	@echo "vectors      regenerate src/gpower_rea/data/public_vectors.csv"
 	@echo "probes       regenerate the GUI probe worksheet, then harvest"
-	@echo "cleanroom    judge the independent second implementation"
+	@echo "cleanroom    judge the 2nd implementation, then probe the spec gaps"
 	@echo "check        compliance + vectors freshness + tests + gate  (= CI)"
 	@echo "demo         run one example through all three interfaces"
 
@@ -43,6 +43,7 @@ probes:
 
 cleanroom:
 	$(PY) tools/judge_cleanroom.py
+	$(PY) tools/probe_spec_gaps.py
 
 check: compliance
 	$(PY) tools/make_vectors.py --check

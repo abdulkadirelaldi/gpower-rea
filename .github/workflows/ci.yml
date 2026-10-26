@@ -61,6 +61,25 @@ jobs:
             (echo "probe worksheet drifted from the engine" && exit 1)
 
   # ------------------------------------------------------------------
+  # The clean-room implementation is held to the same contract as the
+  # engine, and the twelve underspecified regions are re-probed, so a
+  # change that reopens one of them cannot land quietly.
+  # ------------------------------------------------------------------
+  cleanroom:
+    name: clean-room conformance
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - name: judge the second implementation
+        run: python tools/judge_cleanroom.py --strict
+      - name: probe the regions SPEC.md v1.0 left undetermined
+        run: python tools/probe_spec_gaps.py
+
+  # ------------------------------------------------------------------
   # Full suite: the independent SciPy re-derivation of all 401 vectors, the
   # statsmodels agreement oracle, and the mpmath arbitration.
   # ------------------------------------------------------------------
