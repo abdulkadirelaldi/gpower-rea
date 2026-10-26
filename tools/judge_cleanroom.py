@@ -209,18 +209,87 @@ def check_identities(cr) -> list[tuple[str, bool, str]]:
                 detail.append(f"d={d} power={pw}: N={total} is odd")
     out.append(("F-05  balanced a-priori total is even", ok, "; ".join(detail)))
 
-    # F-09: n1-grid reproduces the ratio exactly
+    # F-09 (v1.2, observed): even totals at every ratio, split by
+    # round_half_up(N/(1+R)) -- and the four pre-registered G*Power rows.
     ok, detail = True, []
-    for ratio in (1.5, 2.0, 3.0):
+    for ratio in (0.5, 1.5, 2.0, 2.5, 3.0, 4.0):
+        for d in (0.3, 0.5, 0.8):
+            res = cr.required_sample_size(
+                "ttest-indep-means", alpha=0.05, power=0.9, effect_size=d, tails=2,
+                allocation_ratio=ratio,
+            )
+            n_tot = res["n1"] + res["n2"]
+            want_n1 = int(math.floor(n_tot / (1.0 + ratio) + 0.5))
+            if n_tot % 2 or res["n1"] != want_n1:
+                ok = False
+                detail.append(f"R={ratio} d={d}: {res['n1']}/{res['n2']}")
+    for ratio, want in ((0.5, (157, 79)), (1.5, (88, 132)), (2.0, (79, 157)), (3.0, (70, 210))):
         res = cr.required_sample_size(
-            "ttest-indep-means", alpha=0.05, power=0.9, effect_size=0.5, tails=2,
+            "ttest-indep-means", alpha=0.05, power=0.95, effect_size=0.5, tails=2,
             allocation_ratio=ratio,
         )
-        want = int(math.floor(ratio * res["n1"] + 0.5))
-        if res["n2"] != want:
+        if (res["n1"], res["n2"]) != want:
             ok = False
-            detail.append(f"R={ratio}: n2={res['n2']}, round_half_up={want}")
-    out.append(("F-09  default grid reproduces the ratio", ok, "; ".join(detail)))
+            detail.append(f"P-09 R={ratio}: {res['n1']}/{res['n2']} != {want[0]}/{want[1]}")
+    out.append(("F-09  even-total grid and observed split", ok, "; ".join(detail)))
+
+    # F-08 (v1.2, observed): the sign is a direction
+    ok, detail = True, []
+    neg = cr.achieved_power("ttest-one-sample", alpha=0.05, effect_size=-0.5, tails=1, n=30)
+    if abs(neg["power"] - 0.8482542) > POWER_TOL or not neg["critical_t"] < 0 or not neg["ncp"] < 0:
+        ok = False
+        detail.append(f"P-08-a: power={neg['power']:.7f} t={neg['critical_t']:.4f}")
+    crit = cr.required_alpha("ttest-one-sample", power=0.8, effect_size=-0.5, tails=1, n=30)
+    if not crit["critical_t"] > 0 or abs(crit["alpha"] - 0.0345321) > POWER_TOL:
+        ok = False
+        detail.append(f"N-01: alpha={crit['alpha']:.7f} t={crit['critical_t']:.4f}")
+    out.append(("F-08  sign is a direction; criterion t stays positive", ok, "; ".join(detail)))
+
+    # F-15 (observed): refuse what G*Power refuses, accept what it accepts
+    ok, detail = True, []
+    refusals = (
+        ("r = 0.9999995", lambda: cr.achieved_power("ttest-point-biserial", alpha=0.05, effect_size=0.9999995, n=50)),
+        ("r = -0.3", lambda: cr.achieved_power("ttest-point-biserial", alpha=0.05, effect_size=-0.3, n=50)),
+        ("N = 2 post hoc", lambda: cr.achieved_power("ttest-one-sample", alpha=0.05, effect_size=0.5, n=2)),
+        ("power < alpha", lambda: cr.required_sample_size("ttest-one-sample", alpha=0.05, power=0.04, effect_size=0.5)),
+        ("q = 1e-4", lambda: cr.compromise("ttest-indep-means", effect_size=0.5, beta_alpha_ratio=1e-4, n1=40, n2=40)),
+        ("a priori d = 9e-6", lambda: cr.required_sample_size("ttest-one-sample", alpha=0.05, power=0.8, effect_size=9e-6)),
+        ("f2 = 50", lambda: cr.required_sample_size("ttest-regression-coef", alpha=0.05, power=0.8, effect_size=50, predictors=3)),
+    )
+    for label, call in refusals:
+        try:
+            call()
+        except ValueError:
+            continue
+        except Exception as exc:  # noqa: BLE001
+            ok = False
+            detail.append(f"{label}: raised {type(exc).__name__}, not ValueError")
+            continue
+        ok = False
+        detail.append(f"{label}: accepted")
+    for label, call, want_total in (
+        ("matched pairs d = 20 -> N = 2", lambda: cr.required_sample_size("ttest-paired-means", alpha=0.05, power=0.8, effect_size=20), 2),
+        ("q = 100 accepted", lambda: cr.compromise("ttest-indep-means", effect_size=0.5, beta_alpha_ratio=100, n1=40, n2=40), 80),
+        ("n1 = 1, n2 = 2 accepted", lambda: cr.achieved_power("ttest-indep-means", alpha=0.05, effect_size=0.5, n1=1, n2=2), 3),
+    ):
+        try:
+            got = call()["total"]
+        except Exception as exc:  # noqa: BLE001
+            ok = False
+            detail.append(f"{label}: refused ({exc})")
+            continue
+        if got != want_total:
+            ok = False
+            detail.append(f"{label}: total={got}")
+    try:
+        big = cr.required_sample_size("ttest-one-sample", alpha=0.05, power=0.95, effect_size=1e-4)
+        if not 1_299_470_900 <= big["total"] <= 1_299_470_960:
+            ok = False
+            detail.append(f"d = 1e-4: N={big['total']}")
+    except Exception as exc:  # noqa: BLE001
+        ok = False
+        detail.append(f"d = 1e-4 refused: {exc}")
+    out.append(("F-15  observed input domain", ok, "; ".join(detail)))
 
     # F-06 / F-12: minimal and sufficient, no epsilon slack
     ok, detail = True, []
@@ -293,6 +362,44 @@ def check_round_trips(cr) -> list[tuple[str, bool, str]]:
     out.append(("compromise satisfies beta/alpha = q", ok, "; ".join(detail)))
 
     return out
+
+
+def check_gpower_observations(cr) -> dict:
+    """The clean room against the real program: every recorded a-priori
+    G*Power reading with N <= 1e7 (above that, F-14), exact N."""
+    sys.path.insert(0, str(ROOT / "tools"))
+    from rea_report import load_observations  # noqa: PLC0415
+
+    keymap = {"indep": "ttest-indep-means", "paired": "ttest-paired-means",
+              "one-sample": "ttest-one-sample", "point-biserial": "ttest-point-biserial",
+              "regression": "ttest-regression-coef"}
+    rows = same = 0
+    diffs = []
+    for rec in load_observations():
+        c, out = rec["case"], rec["gui"]["outputs"]
+        if rec["gui"].get("dialog"):
+            continue  # refused: the output panel still shows the previous run
+        if c["analysis"] != "a priori" or "Total sample size" not in out:
+            continue
+        if int(out["Total sample size"]) > 10_000_000:
+            continue
+        kw = dict(alpha=c["alpha"], power=c["power"], effect_size=c["es"],
+                  tails=c.get("tails", 2))
+        if "ratio" in c:
+            kw["allocation_ratio"] = float(c["ratio"])
+        if "predictors" in c:
+            kw["predictors"] = c["predictors"]
+        rows += 1
+        try:
+            got = cr.required_sample_size(keymap[c["test"]], **kw)["total"]
+        except Exception as exc:  # noqa: BLE001
+            diffs.append(f"{rec['id']}: raised {exc}")
+            continue
+        if got == int(out["Total sample size"]):
+            same += 1
+        else:
+            diffs.append(f"{rec['id']}: {got} vs G*Power {out['Total sample size']}")
+    return {"rows": rows, "same": same, "diffs": diffs}
 
 
 def check_divergence_against_shipped(cr) -> dict:
@@ -437,6 +544,7 @@ def main() -> int:
     ids = check_identities(cr)
     rts = check_round_trips(cr)
     div = check_divergence_against_shipped(cr)
+    obs = check_gpower_observations(cr)
     sim = similarity()
 
     rate = vec["exact_n"] / max(1, vec["rows"])
@@ -445,6 +553,7 @@ def main() -> int:
         and all(ok for _, ok, _ in ids)
         and all(ok for _, ok, _ in rts)
         and div["same"] == div["cases"]
+        and obs["same"] == obs["rows"]
     )
 
     if args.markdown:
@@ -455,6 +564,8 @@ def main() -> int:
               f"{vec['power_within_tol']}/{vec['rows']} powers within 5e-7")
         print(f"- cross-implementation grid: **{div['same']}/{div['cases']}** "
               f"identical required `N`")
+        print(f"- **against the real G\\*Power 3.1.9.6**: **{obs['same']}/{obs['rows']}** "
+              f"recorded a-priori results reproduced exactly")
         print()
         print("| property | result |")
         print("|---|---|")
@@ -502,6 +613,9 @@ def main() -> int:
         if detail:
             print(f"         {detail}")
     print()
+    print(f"Against G*Power 3.1.9.6 : {obs['same']}/{obs['rows']} recorded a-priori N exact")
+    for d in obs["diffs"][:20]:
+        print(f"    {d}")
     print(f"Cross-implementation grid: {div['same']}/{div['cases']} identical")
     for d in div["diffs"][:20]:
         print(f"    {d}")

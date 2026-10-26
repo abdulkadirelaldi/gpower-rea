@@ -106,6 +106,36 @@ round-trip tests, an independent SciPy re-derivation and a third-party
 agreement oracle, and all four were blind to it, because all four went through
 the same bracket.
 
+## 4b. Round two — SPEC v1.2, after the real G\*Power was observed
+
+Observation of G\*Power 3.1.9.6 rewrote four findings and added two (SPEC
+v1.2). A rewritten specification is an untested one, so the protocol ran again.
+
+| | |
+|---|---|
+| handover artefacts | `SPEC.md` **v1.2**, SHA-256 `263775846fa176243e77f6bfdbca06960efebbad2f1e3442dcf24bd5e60e789e` (recorded at handover and re-checked against Session B's copy afterwards — unchanged); then **v1.3**, SHA-256 `342fdb44f581884eca05ef7c4eab090d7ae218ed06a828b2f552bc69b117a259`, which is the file committed as [`cleanroom/SPEC.md`](../cleanroom/SPEC.md). The top-level `SPEC.md` has since gained only the G3 rows of F-16 and the `1e-6` floor for `r` in F-15 — both observed after Session B reported them |
+| Session B's working directory | a fresh directory outside the repository holding **only** `SPEC.md`, `INTERFACE.md`, `selfcheck.py` and its own earlier package — no engine, no evidence, no observations, no tests |
+| Session B | a fresh agent session with no access to Session A's context; prompted to read only that directory, use no knowledge of G\*Power beyond the text, and report every gap instead of filling it |
+| returned | the updated package, 82 self-checks, and [`SPEC-GAPS-v1.2.md`](../cleanroom/SPEC-GAPS-v1.2.md) — **19 gaps**, each with a divergent input |
+| judged against the v1.2 contract | 401/401 vectors, every v1.2 SPEC property (F-02…F-15), 300/300 cross-grid |
+| **judged against the real G\*Power** | **212 / 213** recorded a-priori results — the miss, `D-28`, was its own gap G2-04. Its v1.3 version: **219 / 219**, verdict **CONFORMING** |
+
+This round had something the first did not: the reference program. Twelve of
+the 19 gaps were questions about G\*Power, so they were **probed instead of
+decided** (`tools/rea_campaign.py --set gaps`) — and four of the answers
+changed the shipped engine, which had refused inputs G\*Power accepts
+(`r = 0`, `r = 5e-6` a priori) and accepted inputs it refuses
+(`R = 0.001`, `n₁ = 0`). SPEC v1.3 records all 19 as F-16
+([E-016](EVIDENCE/E-016-cleanroom-v12-gaps.md)), and was handed back to the
+same Session B, which still had seen nothing but the specification.
+
+The judge now has a fourth criterion besides vectors, properties and the
+cross-grid: **every recorded G\*Power a-priori result** (`check_gpower_observations`).
+A clean room that agrees with the first implementation but not with the
+program is, after all, only a second copy of the same guess — which is
+precisely what the v1.1 clean room turned out to be (149/219 against
+G\*Power).
+
 ## 5. Specification gaps closed before the engine was written
 
 A specification-first pass is worth running only if it finds something. Four

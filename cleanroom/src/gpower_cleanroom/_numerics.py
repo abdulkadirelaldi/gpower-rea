@@ -52,6 +52,7 @@ __all__ = [
     "student_t_pdf",
     "student_t_isf",
     "student_t_ppf",
+    "cornish_fisher_t",
 ]
 
 _SQRT2 = math.sqrt(2.0)
@@ -563,8 +564,36 @@ def student_t_isf(p: float, nu: float) -> float:
     return val
 
 
+#: SPEC.md section 4 item 7: above these limits the Cornish-Fisher series is
+#: returned as is (no refinement on the cancelling far-tail CDF).
+CF_NU_MIN = 1e5
+CF_Z2_FACTOR = 1000.0
+
+
+def cornish_fisher_t(z: float, nu: float) -> float:
+    """Four-term Cornish-Fisher expansion of the t quantile in terms of the
+    normal quantile ``z`` (Abramowitz & Stegun 26.7.5):
+
+        t = z + g1/nu + g2/nu^2 + g3/nu^3 + g4/nu^4
+    """
+    z2 = z * z
+    g1 = z * (z2 + 1.0) / 4.0
+    g2 = z * ((5.0 * z2 + 16.0) * z2 + 3.0) / 96.0
+    g3 = z * (((3.0 * z2 + 19.0) * z2 + 17.0) * z2 - 15.0) / 384.0
+    g4 = z * ((((79.0 * z2 + 776.0) * z2 + 1482.0) * z2 - 1920.0) * z2
+              - 945.0) / 92160.0
+    inv = 1.0 / nu
+    return z + inv * (g1 + inv * (g2 + inv * (g3 + inv * g4)))
+
+
 def _isf_upper(p: float, nu: float) -> float:
     """Solve ``student_t_sf(t) = p`` for ``0 < p < 0.5`` (so ``t > 0``)."""
+    if nu >= CF_NU_MIN:
+        z = -norm_ppf(p)            # upper-p normal quantile, from the tail
+        if nu >= CF_Z2_FACTOR * z * z:
+            # SPEC.md section 4 item 7: exact to rounding here; a Newton
+            # refinement on the far-tail CDF would only degrade it.
+            return cornish_fisher_t(z, nu)
     lo = 0.0           # sf(0) = 0.5 > p
     hi = max(1.0, _isf_start(p, nu))
     n = 0

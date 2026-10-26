@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Finding** | [F-07](../../SPEC.md#f-07--regression-coefficient-ν--n---p---1-δ--f²n) |
-| **Status** | `REA-DERIVED` (probe specified for confirmation) |
+| **Status** | `[REA] DERIVED + OBSERVED` — observed on G\*Power 3.1.9.6 (macOS) |
 | **Method** | Reduction to a known family member + single-variable isolation |
 | **Target** | G\*Power 3.1.9.x, `t tests` → *Linear multiple regression: Fixed model, single regression coefficient* |
 | **Probe id** | `P-07` |
@@ -114,10 +114,26 @@ gpower: invalid input: ttest-regression-coef: sample size too small,
         degrees of freedom = -7
 ```
 
+## [REA] Observation — G\*Power 3.1.9.6
+
+Read off the GUI's *Output parameters* panel by `tools/rea_campaign.py`
+(raw records in [`probes/observations/`](../../probes/observations/)). The
+predictions were registered in `probes/probe_worksheet.csv` before any
+observation was made, and are shown unchanged.
+
+| probe | read | G\*Power printed | pre-registered engine prediction | competing prediction | verdict |
+|---|---|---|---|---|---|
+| `P-07-a` | delta / Df / Power | `3.8729833 / 98 / 0.9695895` | `3.8729833 / 98 / 0.9695895` | `delta would move with p if p entered the noncentrality` | **SUPPORTS** |
+| `P-07-b` | delta / Df / Power | `3.8729833 / 94 / 0.9694766` | `3.8729833 / 94 / 0.9694766` | `delta would move with p if p entered the noncentrality` | **SUPPORTS** |
+| `P-07-c` | N / Df | `55 / 53` | `55 / 53` | `-` | **SUPPORTS** |
+| `P-07-d` | N / Df | `55 / 49` | `55 / 49` | `-` | **SUPPORTS** |
+
+Every other field G\*Power printed for these rows also matches the current
+engine — `tests/test_gpower_observed.py` checks each one.
+
 ## Verdict
 
-Derivation holds and is enforced; the `P-07-a`/`P-07-b` pair isolates `p`'s
-role to a seven-decimal field.
+**[REA] F-07 — observed.** `δ` is identical for `p = 1` and `p = 5` while `Df` drops by four: the predictor count enters `ν` only.
 
 ## Re-run
 

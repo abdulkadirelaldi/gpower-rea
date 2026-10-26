@@ -49,7 +49,7 @@ except ModuleNotFoundError as exc:  # pragma: no cover
         "Install with:  pip install 'gpower-rea[mcp]'"
     ) from exc
 
-MODEL = "claude-opus-5"
+MODEL = "claude-opus-5-5"
 MAX_TOKENS = 16_000
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
 
@@ -161,7 +161,7 @@ class PowerAgent:
         self.verbose = verbose
         self.messages: list[dict] = []
         self.transcript: list[dict] = []
-        # Server-side refusal fallbacks are recommended for Opus 5, but the
+        # Server-side refusal fallbacks are recommended for Opus 5.5, but the
         # beta may not be enabled on every account -- so request them, and
         # drop them permanently the first time they are refused.
         self._use_fallbacks = True

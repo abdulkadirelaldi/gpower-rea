@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Finding** | [F-10](../../SPEC.md#f-10--compromise-analysis-is-defined-on-the-critical-value) |
-| **Status** | `REA-DERIVED` (probe specified for confirmation) |
+| **Status** | `[REA] DERIVED + OBSERVED` — observed on G\*Power 3.1.9.6 (macOS) |
 | **Method** | Structural probing + consistency with F-02 |
 | **Target** | G\*Power 3.1.9.x, `t tests`, `Type of power analysis = Compromise` |
 | **Probe id** | `P-10` |
@@ -106,10 +106,25 @@ $ gpower solve -t indep -s power -e 0.5 --n1 40 --n2 40 -a 0.1846853 --json
   "power": 0.8153147...,  "critical_t": 1.3383050...
 ```
 
+## [REA] Observation — G\*Power 3.1.9.6
+
+Read off the GUI's *Output parameters* panel by `tools/rea_campaign.py`
+(raw records in [`probes/observations/`](../../probes/observations/)). The
+predictions were registered in `probes/probe_worksheet.csv` before any
+observation was made, and are shown unchanged.
+
+| probe | read | G\*Power printed | pre-registered engine prediction | competing prediction | verdict |
+|---|---|---|---|---|---|
+| `P-10-a` | alpha / beta / Power / Critical t | `0.1846853 / 0.1846853 / 0.8153147 / 1.3383050` | `0.1846853 / 0.1846853 / 0.8153147 / 1.3383050` | `different alpha if the far-tail term (F-02) is dropped` | **SUPPORTS** |
+| `P-10-b` | alpha / beta / Power / Critical t | `0.1239699 / 0.2479399 / 0.7520601 / 1.5551029` | `0.1239699 / 0.2479399 / 0.7520601 / 1.5551029` | `different alpha if the far-tail term (F-02) is dropped` | **SUPPORTS** |
+| `P-10-c` | alpha / beta / Power / Critical t | `0.0802483 / 0.3209934 / 0.6790066 / 1.7723075` | `0.0802483 / 0.3209934 / 0.6790066 / 1.7723075` | `different alpha if the far-tail term (F-02) is dropped` | **SUPPORTS** |
+
+Every other field G\*Power printed for these rows also matches the current
+engine — `tests/test_gpower_observed.py` checks each one.
+
 ## Verdict
 
-Derivation holds, is enforced by the ratio test, and the round trip through
-post-hoc analysis closes. Probe rows above give seven-decimal discriminators.
+**[REA] F-10 — observed.** All four printed quantities of all three rows are identical to seven decimals, which also re-confirms the far-tail term of F-02 inside `β(c)`.
 
 ## Re-run
 

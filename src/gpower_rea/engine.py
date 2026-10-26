@@ -39,8 +39,8 @@ __all__ = [
     "SOLVE_MODES",
 ]
 
-ENGINE_VERSION = "1.1.0"
-SPEC_VERSION = "SPEC.md v1.1"
+ENGINE_VERSION = "1.3.0"
+SPEC_VERSION = "SPEC.md v1.3"
 
 SOLVE_MODES = ("n", "power", "alpha", "effect-size", "compromise")
 
@@ -86,13 +86,72 @@ def _norm_solve(text: str) -> str:
     return "".join(ch for ch in str(text).lower() if ch.isalnum())
 
 #: Hard ceiling on the a-priori search so a pathological request terminates.
-N_SEARCH_CAP = 10_000_000
+#: G*Power accepts totals up to 2**63 - 2 and returns N = 7.8e10 for
+#: d = 1e-5 (SPEC F-15), so the cap is the GUI's own limit, not 1e7.
+N_SEARCH_CAP = 2**63 - 2
 
 #: Closed bracket for the criterion analysis (SPEC F-13).  The search runs on
 #: log(alpha), so the lower end costs nothing and a genuinely tiny answer is
 #: reported rather than clipped to a round number.
 ALPHA_SEARCH_MIN = 1e-300
 ALPHA_SEARCH_MAX = 1.0 - 1e-15
+
+
+#: Below this alpha G*Power 3.1.9.6 was observed to drift from the exact
+#: answer (6th significant digit at 1e-12) and, further out, to stop with
+#: "Internal Math Error" (SPEC F-14).  The engine still reports the exact
+#: value; it only says that the original would print something else.
+GPOWER_ALPHA_FLOOR = 1e-9
+
+
+def _far_tail_warning(alpha: float) -> list[str]:
+    if alpha < GPOWER_ALPHA_FLOOR:
+        return [
+            f"alpha = {alpha:.3g} is below {GPOWER_ALPHA_FLOOR:g}: this value is "
+            f"exact, but G*Power 3.1.9.6 prints a less accurate one here and "
+            f"may refuse with 'Internal Math Error' (SPEC F-14)"
+        ]
+    return []
+
+
+#: Input domain of G*Power 3.1.9.6, as observed (SPEC F-15, evidence E-015).
+APRIORI_MIN_ABS_ES = 1e-5
+#: The point-biserial r is exempt: r = 5e-6 is accepted (SPEC F-16, X-G2-08a).
+APRIORI_MIN_ES_EXEMPT = ("ttest-point-biserial",)
+#: ... which has its own a-priori floor: "admissible range (1e-06, 0.999999)"
+#: (SPEC F-16, X-G3-03).
+APRIORI_MIN_R = 1e-6
+BETA_ALPHA_RATIO_RANGE = (0.01, 100.0)
+ALLOCATION_RATIO_RANGE = (0.01, 100.0)  # SPEC F-15 / F-16 (X-G2-11)
+MIN_INPUT_TOTAL = 3
+#: Beyond this total the power moves by less than ~1e-8 per participant and
+#: G*Power's own a-priori N drifts from the exact one (SPEC F-14).
+LARGE_N_WARNING = 10_000_000
+
+
+def _require_power_at_least_alpha(power_target: float, alpha: float) -> None:
+    if power_target < alpha:
+        raise ValidationError(
+            f"power ({power_target:g}) must be greater than or equal to alpha "
+            f"({alpha:g}) -- G*Power refuses this input too (SPEC F-15)"
+        )
+
+
+def _check_input_design(proc: Procedure, sample: Sample) -> None:
+    """G*Power refuses an explicit design with fewer than three participants
+    ("Total sample size is outside the admissible range (3, ...)"), although
+    its own a-priori search can return N = 2 (SPEC F-15)."""
+    if proc.two_group and min(sample.n1, sample.n2) < 1:
+        raise ValidationError(
+            f"{proc.key}: each group needs at least 1 participant, got "
+            f"n1={sample.n1}, n2={sample.n2} (SPEC F-15)"
+        )
+    if proc.key != "ttest-generic" and sample.total < MIN_INPUT_TOTAL:
+        raise ValidationError(
+            f"{proc.key}: total sample size {sample.total} is below "
+            f"{MIN_INPUT_TOTAL}, the smallest design G*Power accepts as input "
+            f"(SPEC F-15)"
+        )
 
 
 class NoSolutionError(RuntimeError):
@@ -127,11 +186,36 @@ def _alloc_total_grid(step: int, ratio: float, min_sample: Sample) -> Sample:
     return Sample(n1, n2)
 
 
+def _alloc_even_total(step: int, ratio: float, min_sample: Sample) -> Sample:
+    """The rule G*Power 3.1.9.6 was observed to use (SPEC F-09, E-009).
+
+    The search runs over *even* totals N = 2*step, whatever the ratio.  The
+    reported split is n1 = round_half_up(N/(1+ratio)), n2 = N - n1.  The
+    stopping test is made on the continuous split, see ``_even_total_check``,
+    so the reported "Actual power" can fall below the requested power.
+    """
+    total = max(2 * step, min_sample.total)
+    # No clamp: at the ends of the ratio range G*Power reports an EMPTY group
+    # -- d = 20, R = 100 prints n1 = 0, n2 = 6, delta = 0, Actual power
+    # 0.0500000 (X-G3-01a).  Reproduced, not repaired (SPEC F-16).
+    n1 = _round_half_up(total / (1.0 + ratio))
+    return Sample(n1, total - n1)
+
+
+def _even_total_check(step: int, ratio: float, min_sample: Sample) -> Sample:
+    """The unrounded split the even-total stopping test is evaluated on."""
+    total = float(max(2 * step, min_sample.total))
+    return Sample(total / (1.0 + ratio), total * ratio / (1.0 + ratio))
+
+
 ALLOCATION_RULES = {
+    "even-total": _alloc_even_total,
     "n1-grid": _alloc_n1_grid,
     "total-grid": _alloc_total_grid,
 }
-DEFAULT_ALLOCATION_RULE = "n1-grid"
+#: The search sample differs from the reported one only for these rules.
+_CHECK_SAMPLE = {"even-total": _even_total_check}
+DEFAULT_ALLOCATION_RULE = "even-total"
 
 
 def _allocate(
@@ -140,10 +224,14 @@ def _allocate(
     ratio: float,
     extra: Mapping,
     rule: str,
+    *,
+    for_check: bool = False,
 ) -> Sample:
     min_sample = proc.min_sample(extra)
     if not proc.two_group:
         return Sample(max(step, min_sample.total))
+    if for_check and rule in _CHECK_SAMPLE:
+        return _CHECK_SAMPLE[rule](step, ratio, min_sample)
     try:
         fn = ALLOCATION_RULES[rule]
     except KeyError:
@@ -281,8 +369,11 @@ def power(
             f"{proc.key}: sample size too small, degrees of freedom = {df:g}"
         )
     ncp = proc.ncp(sample, effect_size, ex)
-    pw, t_crit = _power_from_ncp(alpha, df, ncp, tails)
-    return PowerPoint(pw, alpha, df, ncp, t_crit, tails, sample)
+    # SPEC F-08: the sign of the effect is the direction of the alternative,
+    # not a test pointed the wrong way.  Power comes from |delta|; delta and
+    # the critical value are reported with the sign of the effect.
+    pw, t_crit = _power_from_ncp(alpha, df, abs(ncp), tails)
+    return PowerPoint(pw, alpha, df, ncp, -t_crit if ncp < 0 else t_crit, tails, sample)
 
 
 def _explicit_sample(
@@ -413,6 +504,13 @@ def _build_result(
     warnings: list,
 ) -> Result:
     sample = pt.sample.as_dict()
+    if proc.two_group:
+        # A two-group design keeps n1/n2 even when a group is empty (F-16).
+        sample = {"n1": pt.sample.n1, "n2": pt.sample.n2, "total": pt.sample.total}
+    if proc.two_group and solve_for != "n" and pt.sample.n1:
+        # Only the a-priori analysis takes a ratio as input; every other
+        # analysis is given the design itself, so its ratio is n2/n1.
+        allocation_ratio = pt.sample.n2 / pt.sample.n1
     if proc.two_group and allocation_ratio is not None:
         sample["allocation_ratio"] = allocation_ratio
         sample["actual_ratio"] = (
@@ -519,6 +617,12 @@ def solve(
         if not (0.0 < power_target < 1.0):
             raise ValidationError("power must be in (0,1)")
         _require_nonzero_effect_size(effect_size, "n")
+        floor = APRIORI_MIN_R if proc.key in APRIORI_MIN_ES_EXEMPT else APRIORI_MIN_ABS_ES
+        if abs(effect_size) < floor:
+            raise ValidationError(
+                f"in an a-priori analysis |effect size| must be at least "
+                f"{floor:g}, got {effect_size!r} (SPEC F-15, F-16)"
+            )
         proc.check_effect_size(effect_size)
         es_eff = abs(effect_size)
         if effect_size < 0:
@@ -526,17 +630,24 @@ def solve(
                 "negative effect size: |ES| used for the directional search "
                 "(SPEC F-08)"
             )
-        if power_target <= alpha:
+        _require_power_at_least_alpha(power_target, alpha)
+        lo_r, hi_r = ALLOCATION_RATIO_RANGE
+        if proc.two_group and not (lo_r <= ratio <= hi_r):
+            raise ValidationError(
+                f"allocation ratio N2/N1 must be in [{lo_r:g}, {hi_r:g}], the "
+                f"range G*Power accepts, got {ratio!r} (SPEC F-15)"
+            )
+        if power_target == alpha:
             warnings.append(
-                "requested power does not exceed alpha; the smallest "
-                "admissible design already satisfies it"
+                "requested power equals alpha; the smallest admissible design "
+                "already satisfies it"
             )
 
         min_sample = proc.min_sample(ex)
         start = min_sample.n1 if proc.two_group else min_sample.total
 
         def attains(step: int) -> bool:
-            s = _allocate(proc, step, ratio, ex, rule)
+            s = _allocate(proc, step, ratio, ex, rule, for_check=True)
             df = proc.df(s, ex)
             if df <= 0:
                 return False
@@ -546,10 +657,16 @@ def solve(
 
         step = _smallest_step(attains, start, N_SEARCH_CAP)
         sample = _allocate(proc, step, ratio, ex, rule)
-        df = proc.df(sample, ex)
-        ncp = proc.ncp(sample, es_eff, ex)
-        pw, t_crit = _power_from_ncp(alpha, df, ncp, tails)
-        pt = PowerPoint(pw, alpha, df, ncp, t_crit, tails, sample)
+        pt = power(proc, alpha=alpha, effect_size=effect_size, tails=tails,
+                   n1=sample.n1, n2=sample.n2 if proc.two_group else None,
+                   extra=ex)
+        if sample.total > LARGE_N_WARNING:
+            warnings.append(
+                f"N = {sample.total} exceeds {LARGE_N_WARNING:g}: power changes "
+                f"by less than about 1e-8 per participant here, and G*Power "
+                f"3.1.9.6 was observed to return an N tens of participants "
+                f"away from the exact one (SPEC F-14)"
+            )
         return _build_result(
             proc,
             "n",
@@ -577,6 +694,7 @@ def solve(
             allocation_ratio=allocation_ratio,
             extra=ex,
         )
+        _check_input_design(proc, pt.sample)
         return _build_result(
             proc,
             "power",
@@ -600,6 +718,7 @@ def solve(
         sample = _explicit_sample(
             proc, ex, n=n, n1=n1, n2=n2, ratio=allocation_ratio
         )
+        _check_input_design(proc, sample)
         df = proc.df(sample, ex)
         if df <= 0:
             raise ValidationError("sample size too small (df <= 0)")
@@ -626,7 +745,11 @@ def solve(
         )
         a_star = min(max(math.exp(la), ALPHA_SEARCH_MIN), ALPHA_SEARCH_MAX)
         pw, t_crit = _power_from_ncp(a_star, df, ncp, tails)
-        pt = PowerPoint(pw, a_star, df, ncp, t_crit, tails, sample)
+        # F-08: delta keeps its sign; the criterion analysis -- alone of the
+        # five -- prints its critical value positive (observed, E-008).
+        pt = PowerPoint(pw, a_star, df, math.copysign(ncp, effect_size),
+                        t_crit, tails, sample)
+        warnings += _far_tail_warning(a_star)
         return _build_result(
             proc,
             "alpha",
@@ -645,9 +768,11 @@ def solve(
             raise ValidationError("solve=effect-size requires alpha and power")
         if not (0.0 < power_target < 1.0):
             raise ValidationError("power must be in (0,1)")
+        _require_power_at_least_alpha(power_target, alpha)
         sample = _explicit_sample(
             proc, ex, n=n, n1=n1, n2=n2, ratio=allocation_ratio
         )
+        _check_input_design(proc, sample)
         df = proc.df(sample, ex)
         if df <= 0:
             raise ValidationError("sample size too small (df <= 0)")
@@ -677,11 +802,16 @@ def solve(
         raise ValidationError(
             "solve=compromise requires effect-size and beta-alpha-ratio (q)"
         )
-    if beta_alpha_ratio <= 0:
-        raise ValidationError("beta-alpha-ratio must be > 0")
+    lo_q, hi_q = BETA_ALPHA_RATIO_RANGE
+    if not (lo_q <= beta_alpha_ratio <= hi_q):
+        raise ValidationError(
+            f"beta-alpha-ratio must be in [{lo_q:g}, {hi_q:g}], the range "
+            f"G*Power accepts, got {beta_alpha_ratio!r} (SPEC F-15)"
+        )
     _require_nonzero_effect_size(effect_size, "compromise")
     proc.check_effect_size(effect_size)
     sample = _explicit_sample(proc, ex, n=n, n1=n1, n2=n2, ratio=allocation_ratio)
+    _check_input_design(proc, sample)
     df = proc.df(sample, ex)
     if df <= 0:
         raise ValidationError("sample size too small (df <= 0)")
@@ -704,7 +834,9 @@ def solve(
 
     c_star = _bisect_scalar(ratio_of_c, 1e-8, 1e6, beta_alpha_ratio)
     beta, a_star = _beta_and_alpha(c_star, df, ncp, tails)
-    pt = PowerPoint(1.0 - beta, a_star, df, ncp, c_star, tails, sample)
+    sign = -1.0 if effect_size < 0 else 1.0
+    pt = PowerPoint(1.0 - beta, a_star, df, sign * ncp, sign * c_star, tails, sample)
+    warnings += _far_tail_warning(a_star)
     res = _build_result(
         proc,
         "compromise",
@@ -758,13 +890,20 @@ def power_curve(
 
     rows = []
     for step in range(n_from, n_to + 1, n_step):
-        sample = _allocate(proc, step, ratio, ex, rule)
+        if proc.two_group and rule == "even-total":
+            # The x axis is the total N, as on G*Power's X-Y plot; each point
+            # is split exactly the way an a-priori result would be reported.
+            sample = _alloc_total_grid(step, ratio, proc.min_sample(ex))
+        else:
+            sample = _allocate(proc, step, ratio, ex, rule)
         df = proc.df(sample, ex)
         if df <= 0:
             continue
-        ncp = proc.ncp(sample, abs(effect_size), ex)
-        pw, t_crit = _power_from_ncp(alpha, df, ncp, tails)
-        row = {"power": pw, "df": df, "noncentrality": ncp, "critical_t": t_crit}
+        pt = power(proc, alpha=alpha, effect_size=effect_size, tails=tails,
+                   n1=sample.n1, n2=sample.n2 if proc.two_group else None,
+                   extra=ex)
+        row = {"power": pt.power, "df": df, "noncentrality": pt.ncp,
+               "critical_t": pt.critical_t}
         row.update(sample.as_dict())
         rows.append(row)
     return rows

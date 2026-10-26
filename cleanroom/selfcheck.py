@@ -10,7 +10,11 @@ exits non-zero on any failure.  The checks are of four kinds:
     against the same quadrature run at much higher resolution;
   * the three internal-consistency identities of F-03, F-04 and F-07;
   * the observable consequences of F-02, F-05, F-06, F-08..F-12;
-  * the F-06 published example, to seven decimals.
+  * the F-06 published example, to seven decimals;
+  * every SPEC.md v1.2 change (F-06 corrected clause, F-08 observed sign
+    rule, F-09 even-total default, F-13 item 11, F-14 warnings, F-15 input
+    domain, section 3 search limit, section 4 item 7), checked against the
+    worked examples SPEC.md v1.2 quotes from the real program.
 """
 
 from __future__ import annotations
@@ -35,7 +39,7 @@ from gpower_cleanroom import (  # noqa: E402
     required_sample_size,
 )
 from gpower_cleanroom import _numerics as NUM  # noqa: E402
-from gpower_cleanroom._designs import round_half_up  # noqa: E402
+from gpower_cleanroom._designs import apriori_grid, round_half_up  # noqa: E402
 from gpower_cleanroom._power import (  # noqa: E402
     alpha_from_critical,
     critical_t,
@@ -328,7 +332,7 @@ def f03_one_sample_equals_paired() -> None:
     for alpha in (0.01, 0.05):
         for tails in (1, 2):
             for es in (-0.8, 0.2, 0.5, 1.3):
-                for n in (2, 3, 7, 30, 54, 500):
+                for n in (3, 7, 30, 54, 500):
                     a = achieved_power("ttest-one-sample", alpha=alpha,
                                        effect_size=es, tails=tails, n=n)
                     b = achieved_power("ttest-paired-means", alpha=alpha,
@@ -472,7 +476,7 @@ def f05_f06_balanced_grid() -> None:
                                           n2=r["n1"] - 1)["power"]
                     if prev >= pw:
                         bad.append(("not minimal", alpha, pw, d))
-    check("F-06 returned design is minimal and its power >= target", not bad,
+    check("F-06 (R=1) returned design is minimal and its power >= target", not bad,
           "%d violations" % len(bad))
 
 
@@ -493,32 +497,415 @@ def f06_published_example() -> None:
           "target %.7f actual %.7f" % (r["target_power"], r["power"]))
 
 
-def f08_sign() -> None:
+# ===========================================================================
+# SPEC.md v1.2 -- the changed and the new findings
+# ===========================================================================
+
+def _raises(exc, fn, *a, **k):
+    try:
+        fn(*a, **k)
+    except exc as e:
+        return str(e) or True
+    except Exception as e:  # noqa: BLE001
+        return False
+    return False
+
+
+def _r7(v: float) -> float:
+    return round(v, 7)
+
+
+def v12_f08_sign() -> None:
+    """F-08 (REFUTED -> CORRECTED): power from |delta|; delta and critical t
+    signed, except the criterion critical t."""
+    # P-08-a, to G*Power's seven printed decimals
     a = achieved_power("ttest-one-sample", alpha=0.05, effect_size=-0.5,
                        tails=1, n=30)
-    check("F-08 one-tailed post-hoc power with negative ES is below alpha "
-          "and unclamped", 0.0 < a["power"] < 0.05,
-          "power %.3e" % a["power"])
+    check("F-08 P-08-a post hoc d=-0.5 N=30 k=1: delta, t, power",
+          _r7(a["ncp"]) == -2.7386128 and _r7(a["critical_t"]) == -1.6991270
+          and _r7(a["power"]) == 0.8482542,
+          "delta %.7f t %.7f power %.7f" % (a["ncp"], a["critical_t"], a["power"]))
+    # N-05: the generic test, where effect_size is delta itself
+    g = achieved_power("ttest-generic", alpha=0.05, effect_size=-2.5,
+                       tails=1, df=30.0)
+    check("F-08 N-05 generic delta=-2.5 nu=30 k=1: t, power",
+          _r7(g["critical_t"]) == -1.6972609 and _r7(g["power"]) == 0.7876008,
+          "t %.7f power %.7f" % (g["critical_t"], g["power"]))
+    # N-01: criterion -- delta signed, critical t NOT signed
+    c = required_alpha("ttest-one-sample", power=0.8, effect_size=-0.5,
+                       tails=1, n=30)
+    check("F-08 N-01 criterion d=-0.5: delta signed, critical t positive",
+          _r7(c["ncp"]) == -2.7386128 and _r7(c["critical_t"]) == 1.8880297,
+          "delta %.7f t %.7f" % (c["ncp"], c["critical_t"]))
+    # N-03 (+ F-13 item 1): compromise uses |delta|; delta and t signed
+    m = compromise("ttest-indep-means", effect_size=-0.5, beta_alpha_ratio=1.0,
+                   tails=1, n1=40, n2=40)
+    check("F-08 N-03 compromise d=-0.5 (40/40, k=1, q=1): alpha, delta, t",
+          _r7(m["alpha"]) == 0.1327324 and _r7(m["ncp"]) == -2.2360680
+          and _r7(m["critical_t"]) == -1.1216208,
+          "alpha %.7f delta %.7f t %.7f" % (m["alpha"], m["ncp"], m["critical_t"]))
 
-    b = achieved_power("ttest-one-sample", alpha=0.05, effect_size=-0.5,
-                       tails=2, n=30)
-    c = achieved_power("ttest-one-sample", alpha=0.05, effect_size=0.5,
-                       tails=2, n=30)
-    check("F-08 two-tailed power is sign-symmetric",
-          close(b["power"], c["power"], 1e-15),
-          "%.12f vs %.12f" % (b["power"], c["power"]))
+    # power(ES) == power(|ES|) in all five analyses (sensitivity has no ES)
+    bad = []
+    for tails in (1, 2):
+        for test, kw, es in (("ttest-one-sample", dict(n=30), 0.5),
+                             ("ttest-indep-means", dict(n1=20, n2=31), 0.6),
+                             ("ttest-generic", dict(df=12.5), 2.2)):
+            for fn, extra, signed_t in (
+                    (achieved_power, dict(alpha=0.05), True),
+                    (required_alpha, dict(power=0.8), False),
+                    (compromise, dict(beta_alpha_ratio=2.0), True)):
+                neg = fn(test, effect_size=-es, tails=tails, **extra, **kw)
+                pos = fn(test, effect_size=es, tails=tails, **extra, **kw)
+                for k in ("power", "alpha", "df", "n1", "n2", "total"):
+                    if neg[k] != pos[k]:
+                        bad.append((fn.__name__, test, tails, k))
+                if neg["ncp"] != -pos["ncp"]:
+                    bad.append((fn.__name__, test, tails, "ncp sign"))
+                want_t = -pos["critical_t"] if signed_t else pos["critical_t"]
+                if neg["critical_t"] != want_t:
+                    bad.append((fn.__name__, test, tails, "t sign"))
+                if neg["effect_size"] != -es:
+                    bad.append((fn.__name__, test, tails, "ES echoed signed"))
+                if not any("F-08" in w for w in neg["warnings"]) or \
+                        any("F-08" in w for w in pos["warnings"]):
+                    bad.append((fn.__name__, test, tails, "warning"))
+        neg = required_sample_size("ttest-indep-means", alpha=0.05, power=0.8,
+                                   effect_size=-0.45, tails=tails,
+                                   allocation_ratio=1.7)
+        pos = required_sample_size("ttest-indep-means", alpha=0.05, power=0.8,
+                                   effect_size=0.45, tails=tails,
+                                   allocation_ratio=1.7)
+        if (neg["n1"], neg["n2"], neg["power"]) != (pos["n1"], pos["n2"], pos["power"]) \
+                or neg["ncp"] != -pos["ncp"] or neg["critical_t"] != -pos["critical_t"] \
+                or neg["effect_size"] != -0.45 or not neg["warnings"]:
+            bad.append(("a priori", tails))
+    check("F-08 power from |delta|, delta and t signed (t unsigned in "
+          "criterion), ES echoed signed, warning -- all analyses", not bad,
+          "%d violations %s" % (len(bad), bad[:3]))
 
-    for fn, kw in (
-        (required_sample_size, dict(alpha=0.05, power=0.8, effect_size=-0.5,
-                                    tails=1)),
-        (required_alpha, dict(power=0.8, effect_size=-0.5, tails=1, n=30)),
-    ):
-        r = fn("ttest-one-sample", **kw)
-        pos = fn("ttest-one-sample", **{**kw, "effect_size": 0.5})
-        same = all(r[k] == pos[k] for k in ("n1", "total", "power", "alpha", "df"))
-        check("F-08 %s uses |delta| and warns" % fn.__name__,
-              same and any("F-08" in w for w in r["warnings"]),
-              "warnings=%d" % len(r["warnings"]))
+    # one-tailed, negative ES: NOT below alpha any more (v1.1 refuted)
+    check("F-08 one-tailed negative ES no longer gives power < alpha",
+          a["power"] > 0.05, "power %.7f" % a["power"])
+
+    # point biserial: a negative r is refused, with a message naming the rule
+    msg = _raises(ValueError, achieved_power, "ttest-point-biserial",
+                  alpha=0.05, effect_size=-0.3, n=50)
+    check("F-08 N-07 point biserial refuses a negative r, naming the range",
+          bool(msg) and "0.999999" in str(msg), str(msg)[:60])
+
+
+def v12_f09_even_total() -> None:
+    import inspect
+    default = inspect.signature(required_sample_size).parameters[
+        "allocation_rule"].default
+    check("F-09 required_sample_size default allocation_rule is 'even-total'",
+          default == "even-total", repr(default))
+
+    # S-019 (also the F-06 corrected clause)
+    r = required_sample_size("ttest-indep-means", alpha=0.05, power=0.9495,
+                             effect_size=0.5, tails=2, allocation_ratio=1.5)
+    check("F-09 S-019 R=1.5 power .9495 -> 87/131, N=218, actual 0.9494095",
+          (r["n1"], r["n2"], r["total"]) == (87, 131, 218)
+          and _r7(r["power"]) == 0.9494095,
+          "%d/%d N=%d power %.7f" % (r["n1"], r["n2"], r["total"], r["power"]))
+
+    # S-* at target .946: N = 216 although the rounded split of 214 suffices
+    r = required_sample_size("ttest-indep-means", alpha=0.05, power=0.946,
+                             effect_size=0.5, tails=2, allocation_ratio=1.5)
+    p214 = achieved_power("ttest-indep-means", alpha=0.05, effect_size=0.5,
+                          n1=86, n2=128)["power"]
+    check("F-09 R=1.5 target .946 -> N=216 though (86,128) has power 0.94628",
+          r["total"] == 216 and _r7(p214) >= 0.946 and round(p214, 5) == 0.94628,
+          "N=%d, power(86,128)=%.7f" % (r["total"], p214))
+
+    # A-022: R = 3, N = 170, N/(1+R) = 42.5 -> n1 = 43 (half away from zero)
+    grid = apriori_grid("ttest-indep-means", 0.5, allocation_ratio=3.0,
+                        allocation_rule="even-total")
+    d170 = grid.report(85)
+    check("F-09 A-022 R=3, N=170 reports n1=43 (half-away-from-zero)",
+          (d170.n1, d170.n2, d170.total) == (43, 127, 170),
+          "%d/%d" % (d170.n1, d170.n2))
+
+    # even totals at every R; reported split = round_half_up(N/(1+R)); the
+    # stopping test on the unrounded split; minimality on the even grid.
+    bad = []
+    for R in (0.3, 0.5, 0.75, 1.0, 1.25, 1.5, 2.0, 3.0, 4.5):
+        for d in (0.25, 0.5, 0.9):
+            for pw in (0.8, 0.95):
+                for tails in (1, 2):
+                    r = required_sample_size("ttest-indep-means", alpha=0.05,
+                                             power=pw, effect_size=d,
+                                             tails=tails, allocation_ratio=R)
+                    N = r["total"]
+                    if N % 2 or r["n1"] != round_half_up(N / (1.0 + R)) \
+                            or r["n2"] != N - r["n1"] or r["df"] != N - 2:
+                        bad.append(("shape", R, d, pw, tails))
+                        continue
+
+                    def ustop(M):
+                        m1, m2 = M / (1.0 + R), M * R / (1.0 + R)
+                        return power_of(M - 2.0, d * math.sqrt(m1 * m2 / M),
+                                        0.05, tails)
+                    if ustop(N) < pw:
+                        bad.append(("stop", R, d, pw, tails))
+                    if N > 4 and ustop(N - 2) >= pw:
+                        bad.append(("minimal", R, d, pw, tails))
+                    back = achieved_power("ttest-indep-means", alpha=0.05,
+                                          effect_size=d, tails=tails,
+                                          n1=r["n1"], n2=r["n2"])
+                    if back["power"] != r["power"] or back["ncp"] != r["ncp"]:
+                        bad.append(("actual", R, d, pw, tails))
+    check("F-09 even-total: even N, half-up split, unrounded stopping test, "
+          "minimal, actual power at the split", not bad,
+          "%d violations %s" % (len(bad), bad[:3]))
+
+    # the three rules are distinct and all selectable
+    tot = {}
+    for rule in ("even-total", "n1-grid", "total-grid"):
+        tot[rule] = required_sample_size(
+            "ttest-indep-means", alpha=0.05, power=0.946, effect_size=0.5,
+            allocation_ratio=1.5, allocation_rule=rule)["total"]
+    check("F-09 'n1-grid' and 'total-grid' stay selectable and differ from "
+          "'even-total'", tot["even-total"] == 216 and len(set(tot.values())) > 1,
+          str(tot))
+
+
+def v12_f06_below_target() -> None:
+    below = []
+    for R in (1.5, 2.0, 2.5, 0.6):
+        for k in range(0, 60):
+            pw = 0.80 + 0.0025 * k
+            r = required_sample_size("ttest-indep-means", alpha=0.05, power=pw,
+                                     effect_size=0.5, allocation_ratio=R)
+            if r["power"] < pw:
+                below.append((R, round(pw, 4), r["total"], r["power"]))
+    check("F-06 (corrected) for R != 1 actual power can be below target, "
+          "and the design is not repaired", len(below) > 0,
+          "%d settings, e.g. %s" % (len(below), below[:1]))
+    # and never below at R = 1 (balanced: split == unrounded split)
+    bad = [pw for pw in (0.5, 0.8, 0.9, 0.95, 0.99)
+           for d in (0.2, 0.5, 1.1)
+           if required_sample_size("ttest-indep-means", alpha=0.05, power=pw,
+                                   effect_size=d)["power"] < pw]
+    check("F-06 at R = 1 actual power is still >= target", not bad, str(bad))
+
+
+def v12_f15_domain() -> None:
+    ok, bad = [], []
+
+    def accepts(name, fn, *a, **k):
+        try:
+            fn(*a, **k)
+            ok.append(name)
+        except Exception as e:  # noqa: BLE001
+            bad.append((name, "refused: %r" % (e,)))
+
+    def refuses(name, fn, *a, **k):
+        msg = _raises(ValueError, fn, *a, **k)
+        if msg:
+            ok.append(name)
+        else:
+            bad.append((name, "accepted"))
+
+    pb = "ttest-point-biserial"
+    rg = "ttest-regression-coef"
+    os_ = "ttest-one-sample"
+    accepts("r = 0.999999 (D-01)", achieved_power, pb, alpha=0.05,
+            effect_size=0.999999, n=10)
+    refuses("r = 0.9999995 (D-02)", achieved_power, pb, alpha=0.05,
+            effect_size=0.9999995, n=10)
+    accepts("r = 0 post hoc (v1.3, X-G2-06)", achieved_power, pb, alpha=0.05,
+            effect_size=0.0, n=10)
+    refuses("r = 0 a priori (zero ES, section 3)", required_sample_size, pb,
+            alpha=0.05, power=0.8, effect_size=0.0)
+    accepts("a priori r = 5e-6: no 1e-5 floor for r (v1.3, X-G2-08a)",
+            required_sample_size, pb, alpha=0.05, power=0.8, effect_size=5e-6)
+    refuses("a priori f2 = 5e-6 (v1.3, X-G2-08b)", required_sample_size, rg,
+            alpha=0.05, power=0.8, effect_size=5e-6, predictors=1)
+    accepts("a priori f2 = 1e-5", required_sample_size, rg,
+            alpha=0.05, power=0.8, effect_size=1e-5, predictors=1)
+    for R in (0.01, 100.0):
+        accepts("allocation ratio %g (v1.3, X-G2-11)" % R, required_sample_size,
+                "ttest-indep-means", alpha=0.05, power=0.8, effect_size=0.5,
+                allocation_ratio=R)
+    for R in (0.001, 0.0099, 100.5, 1000.0):
+        refuses("allocation ratio %g (v1.3, X-G2-11)" % R, required_sample_size,
+                "ttest-indep-means", alpha=0.05, power=0.8, effect_size=0.5,
+                allocation_ratio=R)
+    refuses("two groups n1 = 0 (X-G2-02)", achieved_power, "ttest-indep-means",
+            alpha=0.05, effect_size=0.5, n1=0, n2=5)
+    refuses("predictors = 0 (X-G2-17)", achieved_power, rg, alpha=0.05,
+            effect_size=0.15, n=20, predictors=0)
+    refuses("r < 0 (N-07), a priori", required_sample_size, pb, alpha=0.05,
+            power=0.8, effect_size=-0.3)
+    accepts("f2 = 19.99 (D-39)", achieved_power, rg, alpha=0.05,
+            effect_size=19.99, n=10, predictors=2)
+    refuses("f2 = 50 (D-30)", achieved_power, rg, alpha=0.05, effect_size=50.0,
+            n=10, predictors=2)
+    refuses("f2 = 20", achieved_power, rg, alpha=0.05, effect_size=20.0,
+            n=10, predictors=2)
+    refuses("f2 < 0 (D-37, Internal Math Error)", achieved_power, rg,
+            alpha=0.05, effect_size=-0.1, n=10, predictors=2)
+    accepts("f2 = 0 post hoc", achieved_power, rg, alpha=0.05, effect_size=0.0,
+            n=10, predictors=2)
+    accepts("a priori |ES| = 1e-5 (D-31)", required_sample_size, os_,
+            alpha=0.05, power=0.8, effect_size=1e-5)
+    accepts("a priori ES = -1e-5", required_sample_size, os_,
+            alpha=0.05, power=0.8, effect_size=-1e-5)
+    refuses("a priori |ES| = 9e-6 (D-40)", required_sample_size, os_,
+            alpha=0.05, power=0.8, effect_size=9e-6)
+    refuses("a priori ES = -9e-6", required_sample_size, os_,
+            alpha=0.05, power=0.8, effect_size=-9e-6)
+    accepts("a priori power = alpha (D-32)", required_sample_size, os_,
+            alpha=0.2, power=0.2, effect_size=0.5)
+    refuses("a priori power < alpha (D-13)", required_sample_size, os_,
+            alpha=0.2, power=0.19, effect_size=0.5)
+    accepts("sensitivity power = alpha", detectable_effect_size, os_,
+            alpha=0.2, power=0.2, n=20)
+    refuses("sensitivity power < alpha (D-20)", detectable_effect_size, os_,
+            alpha=0.2, power=0.19, n=20)
+    for q in (0.01, 100.0):
+        accepts("q = %g (D-33/D-34)" % q, compromise, os_, effect_size=0.5,
+                beta_alpha_ratio=q, n=30)
+    for q in (1e-4, 0.0099, 100.5):
+        refuses("q = %g (D-19)" % q, compromise, os_, effect_size=0.5,
+                beta_alpha_ratio=q, n=30)
+    for test in (os_, "ttest-paired-means"):
+        for fn, kw in ((achieved_power, dict(alpha=0.05, effect_size=0.5)),
+                       (required_alpha, dict(power=0.8, effect_size=0.5)),
+                       (detectable_effect_size, dict(alpha=0.05, power=0.8)),
+                       (compromise, dict(effect_size=0.5, beta_alpha_ratio=1.0))):
+            refuses("%s %s N = 2 (D-08/D-41)" % (test, fn.__name__), fn, test,
+                    n=2, **kw)
+        accepts("%s N = 3 post hoc" % test, achieved_power, test, alpha=0.05,
+                effect_size=0.5, n=3)
+    accepts("two groups n1=1, n2=2 (D-24)", achieved_power, "ttest-indep-means",
+            alpha=0.05, effect_size=0.5, n1=1, n2=2)
+    refuses("regression N = p+1", achieved_power, rg, alpha=0.05,
+            effect_size=0.2, n=4, predictors=3)
+    accepts("generic nu = 0.5 (D-10)", achieved_power, "ttest-generic",
+            alpha=0.05, effect_size=1.0, df=0.5)
+    check("F-15 input domain: refuse exactly what G*Power refuses (%d cases)"
+          % (len(ok) + len(bad)), not bad, str(bad[:3]))
+
+    # D-23: a-priori matched pairs d = 20 returns N = 2 (nu = 1), a design
+    # that the post-hoc analysis then refuses.
+    r = required_sample_size("ttest-paired-means", alpha=0.05, power=0.8,
+                             effect_size=20.0)
+    check("F-15 D-23 a priori matched pairs d=20 returns N = 2 (nu = 1)",
+          r["total"] == 2 and r["df"] == 1.0, "N=%d" % r["total"])
+
+    # F-13 item 4 (v1.2): sensitivity bracket for r is [1e-12, 0.999999]
+    s = detectable_effect_size(pb, alpha=0.05, power=0.8, n=8)
+    msg = _raises(RuntimeError, detectable_effect_size, pb, alpha=1e-6,
+                  power=0.999, n=3)
+    check("F-13.4 point-biserial sensitivity stays within [1e-12, 0.999999]",
+          0.0 < s["effect_size"] <= 0.999999 and bool(msg),
+          "r=%.7f; unattainable -> %s" % (s["effect_size"], str(msg)[:40]))
+
+
+def v12_f13_item11() -> None:
+    cases = [
+        ("predictors on one sample", achieved_power, ("ttest-one-sample",),
+         dict(alpha=0.05, effect_size=0.5, n=20, predictors=2)),
+        ("df on one sample", achieved_power, ("ttest-one-sample",),
+         dict(alpha=0.05, effect_size=0.5, n=20, df=19.0)),
+        ("n on two groups", achieved_power, ("ttest-indep-means",),
+         dict(alpha=0.05, effect_size=0.5, n1=10, n2=10, n=20)),
+        ("n on generic", achieved_power, ("ttest-generic",),
+         dict(alpha=0.05, effect_size=1.0, df=10.0, n=12)),
+        ("predictors on a priori point biserial", required_sample_size,
+         ("ttest-point-biserial",),
+         dict(alpha=0.05, power=0.8, effect_size=0.3, predictors=1)),
+        ("allocation_ratio on a single-group a priori", required_sample_size,
+         ("ttest-one-sample",),
+         dict(alpha=0.05, power=0.8, effect_size=0.3, allocation_ratio=2.0)),
+    ]
+    bad = [name for name, fn, a, k in cases if not _raises(ValueError, fn, *a, **k)]
+    check("F-13 item 11: inapplicable parameters are rejected (%d cases)"
+          % len(cases), not bad, str(bad))
+
+
+def v12_f14_warnings() -> None:
+    def f14(r):
+        return any("F-14" in w for w in r["warnings"])
+
+    c_tiny = required_alpha("ttest-one-sample", power=0.8, effect_size=1.5, n=40)
+    c_norm = required_alpha("ttest-one-sample", power=0.8, effect_size=0.5, n=30)
+    m_tiny = compromise("ttest-one-sample", effect_size=1.5, n=100,
+                        beta_alpha_ratio=100.0)
+    m_norm = compromise("ttest-one-sample", effect_size=0.5, n=30,
+                        beta_alpha_ratio=1.0)
+    check("F-14 criterion / compromise warn iff alpha < 1e-9",
+          c_tiny["alpha"] < 1e-9 and f14(c_tiny) and not f14(c_norm)
+          and m_tiny["alpha"] < 1e-9 and f14(m_tiny) and not f14(m_norm),
+          "criterion alpha %.3e, compromise alpha %.3e"
+          % (c_tiny["alpha"], m_tiny["alpha"]))
+    big = required_sample_size("ttest-indep-means", alpha=0.05, power=0.8,
+                               effect_size=0.001, allocation_ratio=2.0)
+    small = required_sample_size("ttest-one-sample", alpha=0.05, power=0.8,
+                                 effect_size=0.002)
+    check("F-14 a priori warns iff N > 1e7",
+          big["total"] > 1e7 and f14(big) and small["total"] <= 1e7
+          and not f14(small),
+          "N=%d warns, N=%d does not" % (big["total"], small["total"]))
+    # the far tail is reported exactly, not imitated: power at the answer is
+    # the requested one, and the critical t matches the alpha
+    t_back = NUM.student_t_sf(c_tiny["critical_t"], c_tiny["df"])
+    check("F-14 tiny criterion alpha is exact (power == target, t matches alpha)",
+          close(c_tiny["power"], 0.8, 1e-12)
+          and abs(t_back / c_tiny["alpha"] * 2.0 - 1.0) < 1e-10,
+          "power %.15f" % c_tiny["power"])
+
+
+def v12_s3_search_limit() -> None:
+    # D-44: two groups d = 0.001, R = 2, power .8 -> exact N = 35 319 876
+    t0 = time.time()
+    r = required_sample_size("ttest-indep-means", alpha=0.05, power=0.8,
+                             effect_size=0.001, allocation_ratio=2.0)
+    check("S3 D-44 search passes 1e7: N = 35 319 876 (the exact answer)",
+          r["total"] == 35319876, "N=%d (%.1fs)" % (r["total"], time.time() - t0))
+    # D-43: one sample d = 1e-4, power .95 -> exact N = 1 299 470 912
+    r = required_sample_size("ttest-one-sample", alpha=0.05, power=0.95,
+                             effect_size=1e-4)
+    check("S3 D-43 one sample d=1e-4 power .95: N = 1 299 470 912 (exact)",
+          r["total"] == 1299470912, "N=%d" % r["total"])
+    # D-31: N ~ 7.8e10 returned; minimal on its own power function
+    r = required_sample_size("ttest-one-sample", alpha=0.05, power=0.8,
+                             effect_size=1e-5)
+    N = r["total"]
+    prev = achieved_power("ttest-one-sample", alpha=0.05, effect_size=1e-5,
+                          n=N - 1)["power"]
+    check("S3 D-31 d=1e-5: N ~ 7.85e10 returned, minimal, power >= target",
+          7.8e10 < N < 7.9e10 and r["power"] >= 0.8 and prev < 0.8,
+          "N=%d power %.13f, N-1: %.13f" % (N, r["power"], prev))
+
+
+def v12_s4_item7() -> None:
+    # Cornish-Fisher returned as is once nu >= 1e5 and nu >= 1000 z^2
+    worst = 0.0
+    worst_at = None
+    same = True
+    for nu in (1e5, 3.3e6, 1e8, 7.8e10, 1e11, 1e15, 9.2e18):
+        for p in (0.4, 0.05, 0.025, 0.005, 1e-4, 1e-6):
+            z = -NUM.norm_ppf(p)
+            t = NUM.student_t_isf(p, nu)
+            if nu >= 1000.0 * z * z and t != NUM.cornish_fisher_t(z, nu):
+                same = False
+            e = abs(NUM.student_t_sf(t, nu) / p - 1.0)
+            if e > worst:
+                worst = e
+                worst_at = (nu, p)
+    check("S4.7 large-nu quantile is the 4-term Cornish-Fisher series",
+          same, "")
+    check("S4.7 large-nu quantile round trip sf(t) = p, nu 1e5..9.2e18",
+          worst <= 1e-12, "worst %.3e rel at %s" % (worst, worst_at))
+    # the CF quantile joins the refined one smoothly at nu = 1e5
+    a = NUM.student_t_isf(0.025, 99999.0)
+    b = NUM.student_t_isf(0.025, 100000.0)
+    check("S4.7 quantile continuous across the nu = 1e5 switch",
+          0.0 < a - b < 1e-9, "%.15f -> %.15f" % (a, b))
 
 
 def f09_allocation() -> None:
@@ -535,10 +922,12 @@ def f09_allocation() -> None:
             for pw in (0.8, 0.95):
                 r = required_sample_size("ttest-indep-means", alpha=0.05,
                                          power=pw, effect_size=d, tails=2,
-                                         allocation_ratio=R)
+                                         allocation_ratio=R,
+                                         allocation_rule="n1-grid")
                 if r["n2"] != round_half_up(R * r["n1"]):
                     bad.append((R, d, pw, r["n1"], r["n2"]))
-    check("F-09 n1-grid sets n2 = round_half_up(R*n1)", not bad,
+    check("F-09 (v1.1 rule, selectable) n1-grid sets n2 = round_half_up(R*n1)",
+          not bad,
           "%d violations" % len(bad))
 
     # total-grid never needs more participants than n1-grid
@@ -562,7 +951,8 @@ def f09_allocation() -> None:
                     equal += 1
                 else:
                     differ += 1
-    check("F-09 total-grid never needs more than n1-grid", not worse,
+    check("F-09 (v1.1 rules) total-grid never needs more than n1-grid",
+          not worse,
           "%d violations; grids differ on %d/%d settings"
           % (len(worse), differ, differ + equal))
 
@@ -576,7 +966,7 @@ def f09_allocation() -> None:
                              effect_size=0.5, allocation_rule="n1-grid")
     b = required_sample_size("ttest-indep-means", alpha=0.05, power=0.95,
                              effect_size=0.5, allocation_rule="total-grid")
-    check("F-09 at R=1 both grids agree on the F-06 example",
+    check("F-09 (v1.1 rules) at R=1 both grids agree on the F-06 example",
           b["total"] <= a["total"] and a["total"] == 210,
           "n1-grid N=%d, total-grid N=%d (n1=%d n2=%d)"
           % (a["total"], b["total"], b["n1"], b["n2"]))
@@ -817,8 +1207,10 @@ def error_handling() -> None:
          dict(alpha=0.05, effect_size=1.0, n=10)),
         ("df <= 0 (N too small)", ValueError, achieved_power,
          ("ttest-one-sample",), dict(alpha=0.05, effect_size=0.5, n=1)),
-        ("df <= 0 (two group)", ValueError, achieved_power,
-         ("ttest-indep-means",), dict(alpha=0.05, effect_size=0.5, n1=1, n2=5)),
+        ("total N < 3 (two group, n1=n2=1)", ValueError, achieved_power,
+         ("ttest-indep-means",), dict(alpha=0.05, effect_size=0.5, n1=1, n2=1)),
+        ("empty group (two group, n1=0)", ValueError, achieved_power,
+         ("ttest-indep-means",), dict(alpha=0.05, effect_size=0.5, n1=0, n2=5)),
         ("df <= 0 (regression)", ValueError, achieved_power,
          ("ttest-regression-coef",),
          dict(alpha=0.05, effect_size=0.1, n=5, predictors=4)),
@@ -846,7 +1238,7 @@ def error_handling() -> None:
     # RuntimeError, with the cap mentioned
     try:
         detectable_effect_size("ttest-one-sample", alpha=1e-10, power=0.999999,
-                               n=2)
+                               n=3)
         ok1 = False
         msg1 = "no exception"
     except RuntimeError as e:
@@ -857,18 +1249,24 @@ def error_handling() -> None:
         msg1 = repr(e)
     check("RuntimeError when the sensitivity target is unattainable", ok1, msg1)
 
-    try:
-        required_sample_size("ttest-one-sample", alpha=1e-12, power=0.999999,
-                             effect_size=1e-7)
-        ok2 = False
-        msg2 = "no exception"
-    except RuntimeError as e:
-        ok2 = "10000000" in str(e)
-        msg2 = str(e)[:70]
-    except Exception as e:  # noqa: BLE001
-        ok2 = False
-        msg2 = repr(e)
-    check("RuntimeError naming the 10,000,000 cap", ok2, msg2)
+    # SPEC section 3: the a-priori search runs up to a total N = 2**63 - 2.
+    # Within the v1.3 domain (|d|, |dz|, f2 >= 1e-5, R in [0.01, 100]) only
+    # point biserial, which has no 1e-5 floor, can exhaust it:
+    # delta = r*sqrt(N/(1-r^2)) <= 1e-12*sqrt(9.2e18) = 0.003.
+    for rule in ("point biserial r = 1e-12",):
+        try:
+            required_sample_size("ttest-point-biserial", alpha=0.05, power=0.8,
+                                 effect_size=1e-12)
+            ok2 = False
+            msg2 = "no exception"
+        except RuntimeError as e:
+            ok2 = "2**63 - 2" in str(e) and str(2 ** 63 - 2) in str(e)
+            msg2 = str(e)[:70]
+        except Exception as e:  # noqa: BLE001
+            ok2 = False
+            msg2 = repr(e)
+        check("S3 RuntimeError naming the 2**63-2 search cap (%s)" % rule,
+              ok2, msg2)
 
 
 def monotonicity() -> None:
@@ -896,8 +1294,92 @@ def monotonicity() -> None:
             if p < prev - 1e-15:
                 bad.append(("total-grid", R, N))
             prev = p
-    check("both F-09 grids are monotone in the search index (bisection exact)",
+        prev = -1.0
+        grid = apriori_grid("ttest-indep-means", 0.4, allocation_ratio=R,
+                            allocation_rule="even-total")
+        for i in range(2, 200):
+            pt = grid.stop(i)
+            if pt is None:
+                continue
+            p = power_of(pt[0], pt[1], 0.05, 2)
+            if p < prev - 1e-15:
+                bad.append(("even-total", R, i))
+            prev = p
+    check("all three F-09 grids are monotone in the search index (bisection exact)",
           not bad, "%d violations %s" % (len(bad), bad[:3]))
+
+
+def v13_f16() -> None:
+    import gpower_cleanroom as G
+    check("v1.3 package version is 1.3.0", G.__version__ == "1.3.0",
+          G.__version__)
+
+    # G2-04 / D-28 / X-G2-04: even-total skips nothing -> 1 / 3 at R = 3
+    rows = []
+    for d in (8.0, 20.0):
+        r = required_sample_size("ttest-indep-means", alpha=0.05, power=0.8,
+                                 effect_size=d, allocation_ratio=3.0)
+        rows.append((d, r["n1"], r["n2"]))
+    check("F-16 G2-04 even-total does not skip: R=3, d=8 and d=20 -> 1 / 3",
+          rows == [(8.0, 1, 3), (20.0, 1, 3)], str(rows))
+    # ... while the v1.1 rules keep F-13 item 7's skip
+    v11 = [required_sample_size("ttest-indep-means", alpha=0.05, power=0.8,
+                                effect_size=8.0, allocation_ratio=3.0,
+                                allocation_rule=rule)
+           for rule in ("n1-grid", "total-grid")]
+    check("F-16 G2-04 v1.1 rules still skip groups below 2",
+          all(min(r["n1"], r["n2"]) >= 2 for r in v11),
+          str([(r["n1"], r["n2"]) for r in v11]))
+
+    # G2-05: delta at the reported split (S-019)
+    r = required_sample_size("ttest-indep-means", alpha=0.05, power=0.9495,
+                             effect_size=0.5, allocation_ratio=1.5)
+    check("F-16 G2-05 S-019 prints delta at the reported split, 3.6152392",
+          _r7(r["ncp"]) == 3.6152392, "%.7f" % r["ncp"])
+
+    # G2-06: r = 0 admissible, post hoc returns alpha
+    p = achieved_power("ttest-point-biserial", alpha=0.05, effect_size=0.0,
+                       n=10)
+    check("F-16 G2-06 point biserial r = 0 post hoc returns alpha",
+          close(p["power"], 0.05, 1e-15) and p["ncp"] == 0.0,
+          "power %.17g" % p["power"])
+
+    # G2-07: sensitivity answer above the f2 input bound (X-G2-07)
+    s = detectable_effect_size("ttest-regression-coef", alpha=0.001,
+                               power=0.99, n=4, predictors=2)
+    check("F-16 G2-07 f2 sensitivity may exceed 20: 672256.1",
+          round(s["effect_size"], 1) == 672256.1, "%.4f" % s["effect_size"])
+
+    # G2-08: r has no 1e-5 floor; r = 5e-6 -> N = 3.1e11 (X-G2-08a)
+    r = required_sample_size("ttest-point-biserial", alpha=0.05, power=0.8,
+                             effect_size=5e-6)
+    check("F-16 G2-08 a priori r = 5e-6 returns N ~ 3.1e11 with F-14 warning",
+          3.05e11 < r["total"] < 3.15e11
+          and any("F-14" in w for w in r["warnings"]),
+          "N=%d" % r["total"])
+
+    # G2-09: zero effect -> positive critical value
+    z = achieved_power("ttest-one-sample", alpha=0.05, effect_size=0.0, n=10)
+    zn = achieved_power("ttest-one-sample", alpha=0.05, effect_size=-0.0, n=10)
+    check("F-16 G2-09 zero ES (also -0.0) prints a positive critical t",
+          z["critical_t"] > 0 and zn["critical_t"] > 0 and not zn["warnings"],
+          "%.7f / %.7f" % (z["critical_t"], zn["critical_t"]))
+
+    # G2-14: N/(1+R) in binary double -> 7 / 59 (X-G2-14)
+    r = required_sample_size("ttest-indep-means", alpha=0.05, power=0.8,
+                             effect_size=1.11, allocation_ratio=7.8)
+    check("F-16 G2-14 d=1.11, R=7.8: 66/8.8 in double -> 7 / 59",
+          (r["n1"], r["n2"]) == (7, 59), "%d / %d" % (r["n1"], r["n2"]))
+
+    # G2-18 / G2-19: warnings always a list, one entry per condition
+    w = required_alpha("ttest-one-sample", power=0.8, effect_size=-1.5, n=40)
+    g = achieved_power("ttest-generic", alpha=0.05, effect_size=-2.5, df=30.0)
+    check("F-16 G2-18/19 warnings: list of str, one per condition, generic warns",
+          isinstance(w["warnings"], list) and len(w["warnings"]) == 2
+          and all(isinstance(x, str) for x in w["warnings"])
+          and len(g["warnings"]) == 1
+          and isinstance(z["warnings"], list) and not z["warnings"],
+          "%d / %d" % (len(w["warnings"]), len(g["warnings"])))
 
 
 def main() -> int:
@@ -912,7 +1394,7 @@ def main() -> int:
     sec4_lgamma_cancellation()
     print()
     print("=" * 96)
-    print("SPEC.md section 2 -- findings F-01 .. F-12")
+    print("SPEC.md section 2 -- findings F-01 .. F-12 (as amended in v1.2)")
     print("=" * 96)
     f02_far_tail()
     f03_one_sample_equals_paired()
@@ -920,7 +1402,6 @@ def main() -> int:
     f05_f06_balanced_grid()
     f06_published_example()
     f07_regression_equals_point_biserial()
-    f08_sign()
     f09_allocation()
     f10_compromise()
     f11_pooling()
@@ -933,6 +1414,23 @@ def main() -> int:
     round_trips()
     monotonicity()
     error_handling()
+    print()
+    print("=" * 96)
+    print("SPEC.md v1.2 changes -- F-06, F-08, F-09, F-13, F-14, F-15, S3, S4.7")
+    print("=" * 96)
+    v12_f08_sign()
+    v12_f09_even_total()
+    v12_f06_below_target()
+    v12_f15_domain()
+    v12_f13_item11()
+    v12_f14_warnings()
+    v12_s3_search_limit()
+    v12_s4_item7()
+    print()
+    print("=" * 96)
+    print("SPEC.md v1.3 changes -- F-16 (closure of G2-01 .. G2-19), F-15 rows")
+    print("=" * 96)
+    v13_f16()
     print()
     print("=" * 96)
     print("%d checks, %d failures, %.1f s" % (NCHECK, len(FAILURES),

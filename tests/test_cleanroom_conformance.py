@@ -31,6 +31,7 @@ cr = pytest.importorskip(
 sys.path.insert(0, str(ROOT / "tools"))
 from judge_cleanroom import (  # noqa: E402
     check_divergence_against_shipped,
+    check_gpower_observations,
     check_identities,
     check_round_trips,
     check_vectors,
@@ -78,13 +79,15 @@ def test_conformance_powers_within_tolerance(vectors):
 
 
 @pytest.mark.parametrize(
-    "index", range(7), ids=[
+    "index", range(9), ids=[
         "F-03 one-sample==paired",
         "F-04 pbs==two-group",
         "F-07 regression(p=1)==pbs",
         "F-02 two-sided size==alpha",
         "F-05 balanced total even",
-        "F-09 grid reproduces ratio",
+        "F-09 even-total grid and observed split",
+        "F-08 sign is a direction",
+        "F-15 observed input domain",
         "F-06/F-12 minimality",
     ],
 )
@@ -102,6 +105,17 @@ def test_spec_properties(index):
 def test_round_trips(index):
     label, ok, detail = check_round_trips(cr)[index]
     assert ok, f"{label}: {detail}"
+
+
+def test_reproduces_the_real_gpower():
+    """[REA] The second implementation against every recorded a-priori
+    G*Power 3.1.9.6 result (N <= 1e7) -- not against the first one."""
+    obs = check_gpower_observations(cr)
+    assert obs["rows"] >= 200
+    assert obs["same"] == obs["rows"], (
+        f"{obs['same']}/{obs['rows']} exact; first divergences: "
+        + "; ".join(obs["diffs"][:5])
+    )
 
 
 def test_agrees_with_the_shipped_engine_on_a_wide_grid():

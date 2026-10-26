@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Finding** | [F-01](../../SPEC.md#f-01--one-model-for-the-whole-family) |
-| **Status** | `REA-DERIVED` + externally corroborated |
+| **Status** | `[REA] DERIVED + OBSERVED` — observed on G\*Power 3.1.9.6 (macOS) |
 | **Method** | Structural black-box probing + published-output comparison |
 | **Target** | G\*Power 3.1.9.x, test family `t tests` |
 | **Probe id** | `P-01` |
@@ -83,12 +83,23 @@ Reproducing four independent printed quantities simultaneously from a
 two-parameter model is strong evidence that the model is the right one; a
 different `δ` convention would match at most one of them.
 
+## [REA] Observation — G\*Power 3.1.9.6
+
+Read off the GUI's *Output parameters* panel by `tools/rea_campaign.py`
+(raw records in [`probes/observations/`](../../probes/observations/)). The
+predictions were registered in `probes/probe_worksheet.csv` before any
+observation was made, and are shown unchanged.
+
+| probe | read | G\*Power printed | pre-registered engine prediction | competing prediction | verdict |
+|---|---|---|---|---|---|
+| `P-01-a` | delta / Critical t / Df / N / Actual power | `3.6228442 / 1.9714347 / 208 / 210 / 0.9501287` | `3.6228442 / 1.9714347 / 208 / 210 / 0.9501287` | `a different ncp convention matches at most one of the five` | **SUPPORTS** |
+
+Every other field G\*Power printed for these rows also matches the current
+engine — `tests/test_gpower_observed.py` checks each one.
+
 ## Verdict
 
-The structural claim is implemented and corroborated. The 401 vectors in
-`src/gpower_rea/data/public_vectors.csv` are all produced by the single routine
-`gpower_rea.engine._power_from_ncp`, and all 401 are independently re-derived
-in `tests/test_reference_scipy.py`.
+**[REA] F-01 — observed.** All five printed quantities of the canonical example are identical to seven decimals, and the same single `(ν, δ)` routine reproduces every one of the 299 recorded G\*Power runs across all six tests and five analyses (see `probes/REA-OBSERVED.md`).
 
 ## Re-run
 

@@ -367,7 +367,7 @@ def test_allocation_ratio_is_recorded():
         effect_size=0.5, tails=2, allocation_ratio=2.0,
     )
     assert res.sample_size["allocation_ratio"] == 2.0
-    assert res.engine["allocation_rule"] == "n1-grid"
+    assert res.engine["allocation_rule"] == "even-total"
 
 
 # --------------------------------------------------------------------------
@@ -416,9 +416,9 @@ def test_unknown_extra_parameter_is_rejected():
         )
 
 
-def test_unreachable_power_raises_no_solution():
-    """f2 = 1e-9 at alpha = .001 needs N ~ 2e10, past the search cap."""
-    with pytest.raises(NoSolutionError):
+def test_an_a_priori_effect_below_the_gui_minimum_is_refused():
+    """SPEC F-15: |ES| < 1e-5 is refused in an a-priori analysis."""
+    with pytest.raises(ValidationError, match="at least"):
         solve(
             "ttest-regression-coef", "n", alpha=0.001, power_target=0.99,
             effect_size=1e-9, tails=2, extra={"predictors": 1},
@@ -474,3 +474,14 @@ def test_power_function_matches_solve_power():
     )
     assert pt.power == pytest.approx(res.power, abs=1e-15)
     assert pt.df == res.df == 73
+
+
+def test_an_explicit_design_reports_its_own_ratio_not_the_default():
+    """Found by the live agent run (agent/transcripts/): a post-hoc result on
+    79 + 158 used to print 'Allocation ratio N2/N1 = 1'."""
+    for mode, kw in (("power", {"alpha": 0.05, "effect_size": 0.5}),
+                     ("alpha", {"power_target": 0.8, "effect_size": 0.5}),
+                     ("effect-size", {"alpha": 0.05, "power_target": 0.8}),
+                     ("compromise", {"effect_size": 0.5, "beta_alpha_ratio": 1.0})):
+        res = solve("ttest-indep-means", mode, n1=79, n2=158, **kw)
+        assert res.sample_size["allocation_ratio"] == pytest.approx(2.0), mode

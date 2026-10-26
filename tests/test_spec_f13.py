@@ -78,21 +78,29 @@ def test_zero_f_squared_is_admissible_for_post_hoc():
     assert res.power == pytest.approx(0.05, abs=1e-9)
 
 
-def test_the_sign_rule_still_applies_to_d_dz_r_and_generic_delta():
+def test_the_sign_rule_still_applies_to_d_dz_and_generic_delta():
+    """F-08 as observed in G*Power 3.1.9.6 (E-008): the sign is the direction
+    of the alternative.  delta and the critical value carry it; power does
+    not depend on it."""
     for test, es in (
         ("ttest-one-sample", -0.5),
         ("ttest-paired-means", -0.5),
-        ("ttest-point-biserial", -0.3),
+        ("ttest-indep-means", -0.5),
         ("ttest-generic", -2.0),
     ):
-        extra = {"df": 30} if test == "ttest-generic" else None
-        kw = {"extra": extra} if extra else {}
-        res = solve(
-            test, "power", alpha=0.05, effect_size=es, tails=1,
-            **({"n": 40} if test != "ttest-generic" else {}), **kw,
-        )
-        assert res.noncentrality < 0, f"{test}: sign was discarded"
-        assert res.power < 0.05, f"{test}: power should be below alpha"
+        kw = {"extra": {"df": 30}} if test == "ttest-generic" else (
+            {"n1": 20, "n2": 20} if test == "ttest-indep-means" else {"n": 40})
+        neg = solve(test, "power", alpha=0.05, effect_size=es, tails=1, **kw)
+        pos = solve(test, "power", alpha=0.05, effect_size=-es, tails=1, **kw)
+        assert neg.noncentrality == pytest.approx(-pos.noncentrality, rel=1e-15)
+        assert neg.critical_t == pytest.approx(-pos.critical_t, rel=1e-15)
+        assert neg.power == pytest.approx(pos.power, rel=1e-15), test
+
+
+def test_a_negative_point_biserial_r_is_rejected_as_the_gui_does():
+    with pytest.raises(ValidationError, match="admissible"):
+        solve("ttest-point-biserial", "power", alpha=0.05, effect_size=-0.3,
+              tails=1, n=40)
 
 
 # --------------------------------------------------------------------------
@@ -106,7 +114,7 @@ def test_the_reported_effect_size_is_the_input_not_the_value_used():
     assert res.effect_size["value"] == -0.5, "the input must be echoed"
     # and the value actually used is recoverable from the noncentrality
     assert res.noncentrality == pytest.approx(
-        0.5 * math.sqrt(res.sample_size["total"]), rel=1e-12
+        -0.5 * math.sqrt(res.sample_size["total"]), rel=1e-12
     )
     assert any("negative effect size" in w for w in res.warnings)
 
@@ -127,7 +135,7 @@ EXPECTED_BOUNDS = {
     "ttest-indep-means": (1e-12, 100.0),
     "ttest-paired-means": (1e-12, 100.0),
     "ttest-one-sample": (1e-12, 100.0),
-    "ttest-point-biserial": (1e-12, 1.0 - 1e-12),
+    "ttest-point-biserial": (1e-12, 0.999999),   # v1.2: the GUI's own bound (F-15)
     "ttest-regression-coef": (1e-12, 1e6),
     "ttest-generic": (1e-12, 1e6),
 }
@@ -139,13 +147,19 @@ def test_effect_size_brackets_match_the_specification(key):
 
 
 def test_sensitivity_returns_the_lower_bound_when_the_target_is_already_met():
-    """A target power *below* alpha is met by any effect size at all, so the
-    answer is the documented lower end of the bracket."""
+    """A target power equal to alpha is met by any effect size at all, so the
+    answer is the documented lower end of the bracket.  (A target *below*
+    alpha is refused, as G*Power refuses it -- SPEC F-15.)"""
+    with pytest.raises(ValidationError, match="greater than or equal to alpha"):
+        solve("ttest-one-sample", "effect-size", alpha=0.20, power_target=0.15,
+              tails=2, n=50)
     res = solve(
-        "ttest-one-sample", "effect-size", alpha=0.20, power_target=0.15,
+        "ttest-one-sample", "effect-size", alpha=0.20, power_target=0.20,
         tails=2, n=50,
     )
-    assert res.effect_size["value"] == pytest.approx(1e-12, rel=1e-6)
+    # power(ES) - alpha is O(ES^2) near zero, so a target of exactly alpha is
+    # met within rounding by any ES below ~1e-7: the answer is "no effect".
+    assert res.effect_size["value"] < 1e-6
     assert res.power == pytest.approx(0.20, abs=1e-9), (
         "at the lower bound the power is the size of the test"
     )
@@ -236,7 +250,7 @@ def test_critical_t_for_two_tails_is_the_upper_quantile():
 # item 7 -- inadmissible grid points are skipped, not fatal
 # --------------------------------------------------------------------------
 @pytest.mark.parametrize("ratio", [0.05, 0.1, 10.0, 20.0, 50.0])
-@pytest.mark.parametrize("rule", ["n1-grid", "total-grid"])
+@pytest.mark.parametrize("rule", ["even-total", "n1-grid", "total-grid"])
 def test_extreme_allocation_ratios_still_solve(ratio, rule):
     res = solve(
         "ttest-indep-means", "n",
@@ -295,8 +309,8 @@ def test_the_returned_values_are_full_precision():
 def test_both_allocation_rules_are_reachable_and_named_in_the_result():
     from gpower_rea.engine import ALLOCATION_RULES, DEFAULT_ALLOCATION_RULE
 
-    assert set(ALLOCATION_RULES) == {"n1-grid", "total-grid"}
-    assert DEFAULT_ALLOCATION_RULE == "n1-grid"
+    assert set(ALLOCATION_RULES) == {"even-total", "n1-grid", "total-grid"}
+    assert DEFAULT_ALLOCATION_RULE == "even-total"
     for rule in ALLOCATION_RULES:
         res = solve(
             "ttest-indep-means", "n", alpha=0.05, power_target=0.9,

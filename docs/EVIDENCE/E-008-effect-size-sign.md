@@ -1,93 +1,80 @@
-# E-008 — A negative effect size is a direction, and only the solvers absolutise it
+# E-008 — A negative effect size: direction, not a wrong-way test
 
 | | |
 |---|---|
 | **Finding** | [F-08](../../SPEC.md#f-08--a-negative-effect-size-is-a-direction-not-an-error) |
-| **Status** | `REA-OPEN` |
-| **Method** | Sign probing across the five analysis types |
-| **Target** | G\*Power 3.1.9.x, `t tests` |
-| **Probe id** | `P-08` |
+| **Status** | `[REA] REFUTED → CORRECTED` — v1.1's post-hoc rule refuted; observed rule implemented |
+| **Method** | Pre-registered discriminating probes, then a sign sweep across tests and analyses |
+| **Target** | G\*Power 3.1.9.6 (macOS), `t tests`, all entries that accept a signed effect size |
+| **Probe ids** | `P-08-a…c` (pre-registered), `N-01…N-12` |
 
-## Claim
+## [REA] Claim
 
-* **Post hoc** uses the signed noncentrality. A one-tailed test with a
-  negative effect size therefore reports power *below* `α`, and that is
-  correct — it is the probability of rejecting in the stated direction when the
-  truth lies the other way.
-* **A priori, criterion and sensitivity** take the hypothesis direction from
-  the sign of the supplied effect size, i.e. they solve with `|δ|`.
-* Two-tailed analyses are sign-invariant throughout.
+```
+every probability is computed from |δ|          (power, α, β — all five analyses)
+δ is printed with the sign of the effect size
+critical t is printed as sign(ES)·t_crit         a priori, post hoc, compromise
+critical t is printed as +t_crit                 criterion — the sign is NOT applied
+point biserial: a negative r is refused          "outside the admissible range (0, 0.999999)"
+```
 
 ## Why this is not in the manual
 
-The manual neither forbids a negative effect size nor explains what happens
-when you supply one. Three behaviours are all defensible: reject the input,
-silently absolutise it, or honour the sign. A reimplementation that picks the
-wrong one produces either a spurious error for a legitimate input or a
-silently wrong power number — and since the a-priori search is monotone in
-`|δ|` but *not* in `δ`, honouring the sign in the a-priori search would make
-the search non-monotone and hang or diverge.
+The manual never says what a negative `d` means. Two readings are both
+defensible: (A) the test is one-sided in the positive direction and a negative
+effect points the wrong way, so power falls below `α`; (B) the sign states the
+direction of the alternative. They differ by five orders of magnitude on a
+one-tailed post-hoc analysis. SPEC v1.1 chose (A) for post hoc and (B) for the
+solving analyses.
 
-This finding is marked `REA-OPEN` because the engine's choice is a design
-decision taken for safety, not a measured behaviour, and the engine *says so*
-on every affected output.
+## [REA] Observation — G\*Power 3.1.9.6
 
-## Discriminating probe `P-08`
+Pre-registered rows (predictions committed before observation):
 
-### Click path
-
-`Test family = t tests` → `Statistical test = Means: Difference from constant
-(one sample case)` → set `Effect size d` to a negative value → run each
-`Type of power analysis` in turn.
-
-### Rows
-
-| row | analysis | inputs | prediction under "signed" | prediction under "absolutised" | prediction under "rejected" |
+| probe | input | G\*Power printed | v1.1 predicted | competing | verdict |
 |---|---|---|---|---|---|
-| `P-08-a` | post hoc, one tail | `d = -0.5`, `α = .05`, `N = 30` | power `≈ 7.7e-6` | power `0.8482542` | error dialog |
-| `P-08-b` | post hoc, two tails | `d = -0.5`, `α = .05`, `N = 30` | power `0.7539647` | power `0.7539647` | error dialog |
-| `P-08-c` | a priori, one tail | `d = -0.5`, `α = .05`, power `.80` | no solution / hang | `N = 27` | error dialog |
+| `P-08-a` | one sample, `d = -0.5`, `N = 30`, α `.05`, **one** tail, post hoc | power **`0.8482542`**, `δ = -2.7386128`, `t = -1.6991270` | `7.733e-06` (signed) | `0.8482542` (absolutised) | **CONTRADICTS** v1.1 |
+| `P-08-b` | same, two tails | power `0.7539647`, `t = -2.0452296` | `0.7539647` | `0.7539647` | control |
+| `P-08-c` | one sample, `d = -0.5`, power `.80`, one tail, a priori | `N = 27`, `δ = -2.5980762`, `t = -1.7056179` | `27` | no solution | **SUPPORTS** |
 
-Row `P-08-b` is the control: it cannot discriminate, so a deviation there
-indicates a setup problem.
+The sign sweep `N-*`:
 
-### Observation
+| row | test / analysis | input | G\*Power printed |
+|---|---|---|---|
+| `N-01` | one sample / criterion, 1 tail | `d = -0.5`, `N = 30`, power `.8` | `δ = -2.7386128`, **`t = +1.8880297`**, `α = 0.0345321` |
+| `N-02` | one sample / criterion, 2 tails | same | `δ = -2.7386128`, **`t = +1.8880431`**, `α = 0.0690624` |
+| `N-03` | two groups / compromise, 1 tail | `d = -0.5`, `40 + 40`, `q = 1` | `δ = -2.2360680`, `t = -1.1216208`, `α = β = 0.1327324` |
+| `N-04` | two groups / compromise, 2 tails | same, `q = 2` | `δ = -2.2360680`, `t = -1.5551029`, `α = 0.1239699` |
+| `N-05` | generic / post hoc, 1 tail | `δ = -2.5`, `ν = 30` | `t = -1.6972609`, power `0.7876008` |
+| `N-06` | generic / post hoc, 2 tails | same | `t = -2.0422725`, power `0.6770315` |
+| `N-07` | point biserial / post hoc | `r = -0.3`, `N = 50` | dialog: *"Input error! Effect size r is outside the admissible range (0, 0.999999)."* |
+| `N-08` | matched pairs / post hoc, 1 tail | `dz = -0.4`, `N = 40` | `δ = -2.5298221`, `t = -1.6848751`, power `0.7997378` |
+| `N-09` | two groups / post hoc, 1 tail | `d = -0.5`, `30 + 30` | `δ = -1.9364917`, `t = -1.6715528`, power `0.6060253` |
+| `N-10` | two groups / a priori, 1 tail, `R = 2` | `d = -0.5`, power `.8` | `38 / 76`, `δ = -2.5166115`, `t = -1.6585726` |
+| `N-11` | one sample / post hoc | `d = 0`, `N = 30` | power `0.0500000` (= α, F-02) |
+| `N-12` | generic / criterion, 1 tail | `δ = -2.5`, `ν = 30`, power `.8` | **`t = +1.6533561`**, `α = 0.0543434` |
 
-`probes/REA-RESULTS.md`, rows `P-08-a` … `P-08-c`.
+Every power and `α` equals the value for `|ES|`. The criterion analysis — and
+only it — prints a positive critical value next to a negative `δ` (`N-01`,
+`N-02`, `N-12`), an internal inconsistency of G\*Power that a conforming
+implementation must reproduce to match its output.
 
-## What the engine does, and how it tells you
+## What changed in the engine
 
-Post hoc honours the sign exactly:
-
-```console
-$ gpower solve -t one-sample -s power -a 0.05 -e -0.5 --tails 1 -n 30 --json
-  "noncentrality": -2.7386127875258306,
-  "power": 7.733107252105853e-06
-```
-
-A priori absolutises, and records it:
-
-```console
-$ gpower solve -t one-sample -a 0.05 -p 0.8 -e -0.5 --tails 1 --json
-  "sample_size": { "n": 27, "total": 27 },
-  "warnings": [
-    "negative effect size: |ES| used for the directional search (SPEC F-08)"
-  ]
-```
-
-The warning travels through every layer: the CLI prints it under a `Warnings`
-heading, the JSON keeps it in `warnings[]`, and the MCP server returns it
-inside `result.warnings`, so an agent quoting the number also sees the caveat.
+`engine.power()` computes from `|δ|` and returns `δ` and the critical value
+with the sign of the effect; the criterion analysis returns `+t_crit`; the
+point-biserial procedure refuses `r ≤ 0`. `warnings[]` still records that a
+negative effect size was supplied.
 
 ## Verdict
 
-`REA-OPEN`. The engine's behaviour is explicit, documented and surfaced in
-the output; row `P-08-a` settles which of the three candidates the GUI
-implements. Should the probe contradict the choice, the fix is confined to
-nine lines in `gpower_rea.engine.solve` (the `es_eff = abs(effect_size)` block).
+**[REA] F-08 — observed.** The sign is a direction; G\*Power never computes a
+"wrong-way" power. All 14 rows above are reproduced in every printed field.
 
 ## Re-run
 
 ```console
-$ python -m pytest tests/test_engine_invariants.py -k negative_effect_size -q
+$ python tools/rea_campaign.py --set probes --only P-08-a P-08-b P-08-c
+$ python tools/rea_campaign.py --set sign
+$ python -m pytest tests/test_gpower_observed.py -k "P-08 or N-"
 ```

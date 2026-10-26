@@ -355,10 +355,24 @@ def render_markdown(data: list[dict]) -> str:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--hunt-boundary", action="store_true")
+    ap.add_argument("--force", action="store_true",
+                    help="overwrite a worksheet that already holds observations")
     args = ap.parse_args()
 
     data = rows(hunt_boundary=args.hunt_boundary)
     OUT_DIR.mkdir(exist_ok=True)
+
+    if CSV_PATH.is_file() and not args.force:
+        with CSV_PATH.open(encoding="utf-8-sig", newline="") as fh:
+            if any(r.get("observed") for r in csv.DictReader(fh)):
+                print(
+                    f"{CSV_PATH} holds observations: its predictions are a "
+                    "pre-registration and are not regenerated. Re-stamp it with "
+                    "tools/stamp_worksheet.py, or pass --force to start a new "
+                    "registration.",
+                    file=sys.stderr,
+                )
+                return 0
 
     if CSV_PATH.is_file():
         # Preserve observations that have already been entered.

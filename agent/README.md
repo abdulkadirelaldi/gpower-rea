@@ -3,7 +3,7 @@
 A power-analysis consultant that talks to the same engine the CLI talks to.
 
 ```
-you ──prose──► Claude Opus 5 ──MCP(stdio)──► gpower-mcp ──► engine.solve()
+you ──prose──► Claude Opus 5.5 ──MCP(stdio)──► gpower-mcp ──► engine.solve()
 ```
 
 ## Run it
@@ -85,7 +85,7 @@ exceptions, so a bad parameter becomes a question to you rather than a crash.
 ## Model configuration
 
 ```python
-MODEL        = "claude-opus-5"
+MODEL        = "claude-opus-5-5"
 max_tokens   = 16_000
 thinking     = {"type": "adaptive"}
 output_config = {"effort": "high"}

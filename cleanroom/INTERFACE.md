@@ -61,6 +61,7 @@ required_sample_size(
     effect_size: float,
     tails: int = 2,
     allocation_ratio: float = 1.0,     # N2/N1, two-group test only
+    allocation_rule: str = "even-total",   # SPEC F-09; also "n1-grid", "total-grid"
     predictors: int | None = None,     # ttest-regression-coef only
 ) -> dict
 ```
@@ -118,12 +119,12 @@ Additionally returns `"beta": float` in the dict.
 ## Error handling
 
 Raise `ValueError` for input outside a documented domain: unknown test key,
-`alpha` or `power` not in `(0,1)`, `tails` not in `{1,2}`, `|r| >= 1` for the
-point biserial test, a design whose degrees of freedom would be `<= 0`, or an
+`alpha` or `power` not in `(0,1)`, `tails` not in `{1,2}`, an effect size
+outside the domain `SPEC.md` gives for the test (F-08, F-13, F-15), a design whose degrees of freedom would be `<= 0`, or an
 analysis a test does not support.
 
 Raise `RuntimeError` if a requested quantity is unattainable within a bounded
-search (cap the sample-size search at 10,000,000 and say so in the message).
+search (cap the sample-size search at `2**63 - 2` on the total, SPEC §3, and say so in the message).
 
 ---
 

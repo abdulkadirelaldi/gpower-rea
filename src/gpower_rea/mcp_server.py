@@ -242,11 +242,14 @@ def engine_provenance() -> dict:
             "bundles_original_binary": False,
         },
         "method": (
-            "Behavioural (black-box) reverse engineering of G*Power 3.1.9.7 "
-            "plus differential testing. Findings are catalogued in SPEC.md and "
-            "docs/EVIDENCE/; the implementation was written in a separate "
-            "session from SPEC.md alone (docs/CLEANROOM-PROTOCOL.md)."
+            "Behavioural (black-box) reverse engineering of G*Power 3.1.9.6: "
+            "the GUI was driven through the macOS Accessibility API and its "
+            "printed output recorded (probes/observations/). Findings are "
+            "catalogued in SPEC.md and docs/EVIDENCE/; the clean-room "
+            "implementation was written in a separate session from SPEC.md "
+            "alone (docs/CLEANROOM-PROTOCOL.md)."
         ),
+        "observed_against": "G*Power 3.1.9.6 (macOS)",
         "allocation_rules": sorted(eng.ALLOCATION_RULES),
         "default_allocation_rule": eng.DEFAULT_ALLOCATION_RULE,
         "tests": sorted(PROCEDURES),

@@ -190,10 +190,9 @@ def _add_solve_arguments(p: argparse.ArgumentParser) -> None:
     )
     p.add_argument(
         "--tails",
-        type=int,
+        type=_tails_arg,
         default=None,
-        choices=(1, 2),
-        help="number of tails (default: 2)",
+        help="number of tails: 1 or 2, also One/Two (default: 2)",
     )
     p.add_argument("-n", "--n", dest="n", type=int, help="total sample size")
     p.add_argument("--n1", type=int, help="sample size of group 1")
@@ -297,7 +296,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     p_batch.add_argument("--test", help="default test for rows that omit it")
     p_batch.add_argument("--solve", default=None, help="default solve target for rows that omit it")
-    p_batch.add_argument("--tails", type=int, choices=(1, 2), default=None)
+    p_batch.add_argument("--tails", type=_tails_arg, default=None)
     p_batch.add_argument("--alpha", type=float, default=None)
     p_batch.add_argument(
         "--expect",
@@ -324,7 +323,7 @@ def build_parser() -> argparse.ArgumentParser:
     p_curve.add_argument(
         "-e", "--effect-size", "--es", dest="effect_size", type=float, required=True
     )
-    p_curve.add_argument("--tails", type=int, choices=(1, 2), default=2)
+    p_curve.add_argument("--tails", type=_tails_arg, default=2)
     p_curve.add_argument("--n-from", type=int, required=True)
     p_curve.add_argument("--n-to", type=int, required=True)
     p_curve.add_argument("--n-step", type=int, default=1)
@@ -600,6 +599,39 @@ def _normalise_number(text: str, kind: str) -> str:
     return t.replace(",", "")
 
 
+_TAILS_WORDS = {
+    "1": 1, "one": 1, "onetailed": 1, "onesided": 1, "1tailed": 1, "1sided": 1,
+    "2": 2, "two": 2, "twotailed": 2, "twosided": 2, "2tailed": 2, "2sided": 2,
+}
+
+
+def parse_tails(value: Any) -> int | None:
+    """1 or 2, also from the GUI's own wording ("One", "Two") and the usual
+    "one-sided" / "two-tailed" spellings."""
+    if value is None:
+        return None
+    text = str(value).strip().lower()
+    if text in ("", "na", "nan", "null", "none", "-", "n/a"):
+        return None
+    token = "".join(ch for ch in text if ch.isalnum())
+    if token in _TAILS_WORDS:
+        return _TAILS_WORDS[token]
+    try:
+        number = float(text.replace(",", "."))
+    except ValueError:
+        number = None
+    if number in (1.0, 2.0):
+        return int(number)
+    raise ValidationError(f"tails must be 1 or 2 (or One/Two), got {value!r}")
+
+
+def _tails_arg(value: str) -> int:
+    try:
+        return parse_tails(value)
+    except ValidationError as exc:
+        raise argparse.ArgumentTypeError(str(exc)) from None
+
+
 def _coerce(value: Any, kind: str):
     if value is None:
         return None
@@ -645,7 +677,7 @@ def _run_batch_row(
             "no test given: add a 'test' column or pass --test"
         )
     solve_for = fields.get("solve") or defaults.get("solve") or "n"
-    tails = _coerce(fields.get("tails"), "int")
+    tails = parse_tails(fields.get("tails"))
     if tails is None:
         tails = defaults.get("tails") or 2
     alpha = _coerce(fields.get("alpha"), "float")

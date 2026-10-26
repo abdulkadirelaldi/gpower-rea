@@ -292,16 +292,18 @@ def test_nct_sf_and_nct_cdf_are_complementary(df):
 
 
 def test_nct_sf_keeps_relative_precision_for_a_tiny_answer():
-    """A one-tailed test pointed the wrong way: power is 7.7e-06, and the
-    subtraction-from-one formulation cannot represent it to better than 1e-16
-    absolute -- i.e. two significant digits short of what is reported."""
-    from gpower_rea import solve
-
-    res = solve("ttest-one-sample", "power", alpha=0.05, effect_size=-0.5,
-                tails=1, n=30)
-    direct = nm.nct_sf(res.critical_t, res.df, res.noncentrality)
-    assert res.power == pytest.approx(direct, rel=1e-13)
-    assert 1e-6 < res.power < 1e-5
+    """The upper tail of a noncentral t pointed the wrong way is 7.7e-06, and
+    the subtraction-from-one formulation cannot represent it to better than
+    1e-16 absolute -- two significant digits short of what is printed.  The
+    engine no longer reaches this through a negative effect size (F-08, as
+    observed), but the far-tail term of every two-tailed power does."""
+    t_crit = nm.t_isf(0.05, 29)
+    tiny = nm.nct_sf(t_crit, 29, -0.5 * math.sqrt(30))
+    assert 1e-6 < tiny < 1e-5
+    assert tiny == pytest.approx(1.0 - nm.nct_cdf(t_crit, 29, -0.5 * math.sqrt(30)),
+                                 abs=1e-15)
+    assert tiny == pytest.approx(nm.nct_cdf(-t_crit, 29, 0.5 * math.sqrt(30)),
+                                 rel=1e-12)
 
 
 @needs_scipy

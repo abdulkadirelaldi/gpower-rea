@@ -253,7 +253,7 @@ def test_model_and_thinking_configuration():
     agent, client = _agent([runner])
     asyncio.run(agent.ask("hi"))
     params = client.calls[0]
-    assert params["model"] == "claude-opus-5"
+    assert params["model"] == "claude-opus-5-5"
     assert params["thinking"] == {"type": "adaptive"}
     assert params["output_config"] == {"effort": "high"}
     assert "statistical power-analysis consultant" in params["system"]

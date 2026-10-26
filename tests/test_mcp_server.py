@@ -145,4 +145,4 @@ def test_provenance_declares_compliance():
     payload = _call("engine_provenance", {})
     assert payload["engine"]["contains_decompiler_output"] is False
     assert payload["engine"]["bundles_original_binary"] is False
-    assert payload["default_allocation_rule"] == "n1-grid"
+    assert payload["default_allocation_rule"] == "even-total"

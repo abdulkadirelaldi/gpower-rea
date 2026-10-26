@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Finding** | [F-02](../../SPEC.md#f-02--two-sided-power-retains-the-far-tail-term) |
-| **Status** | `REA-BEHAVIOURAL` |
+| **Status** | `[REA] OBSERVED` — observed on G\*Power 3.1.9.6 (macOS) |
 | **Method** | Differential probing at the null; discriminating-prediction design |
 | **Target** | G\*Power 3.1.9.x, test family `t tests` |
 | **Probe id** | `P-02` |
@@ -145,10 +145,26 @@ So an implementation can pass a naive a-priori test suite with candidate B and
 still be wrong where it matters. This repository's vector set deliberately
 includes `α = 0.10` rows for that reason.
 
+## [REA] Observation — G\*Power 3.1.9.6
+
+Read off the GUI's *Output parameters* panel by `tools/rea_campaign.py`
+(raw records in [`probes/observations/`](../../probes/observations/)). The
+predictions were registered in `probes/probe_worksheet.csv` before any
+observation was made, and are shown unchanged.
+
+| probe | read | G\*Power printed | pre-registered engine prediction | competing prediction | verdict |
+|---|---|---|---|---|---|
+| `P-02-a` | Power | `0.2000000` | `0.2000000` | `0.1000000` | **SUPPORTS** |
+| `P-02-b` | Power | `0.0500000` | `0.0500000` | `0.0250000` | **SUPPORTS** |
+| `P-02-c` | Power | `0.2000000` | `0.2000000` | `0.1000000` | **SUPPORTS** |
+| `P-02-d` | Power | `0.2000000` | `0.2000000` | `0.2000000` | **AMBIGUOUS** |
+
+Every other field G\*Power printed for these rows also matches the current
+engine — `tests/test_gpower_observed.py` checks each one.
+
 ## Verdict
 
-Candidate A implemented; prediction table above is the discriminator; the
-engine-side behaviour is locked by a test that fails under candidate B.
+**[REA] F-02 — observed.** Candidate A (far tail kept) is what G\*Power does: at `δ = 0` two-tailed power equals `α` exactly, not `α/2`. Candidate B is refuted by three independent rows; the one-tailed control row agrees with both, as pre-registered.
 
 ## Re-run
 

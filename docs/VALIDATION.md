@@ -1,19 +1,73 @@
 # VALIDATION.md — measured evidence that the engine is correct
 
-Four independent checks, none of which requires a G\*Power installation, plus
-the probe harness that does. Every number below is reproducible from a clean
-checkout with the commands shown.
+First the check that matters most — the engine against the real G\*Power —
+then the independent checks that need no installation. Every number below is
+reproducible from a clean checkout with the commands shown; §0 is reproducible
+offline from the recorded readings, and re-recordable with G\*Power present.
 
-Environment of the recorded run: CPython 3.12.1 on Windows 11, SciPy 1.14.1,
-statsmodels 0.15.0, mpmath 1.3, `mcp` 2.3.0, `anthropic` 2.3.0.
+Environment of the recorded run: CPython 3.13.9 on macOS 27.0.1 (arm64),
+SciPy 1.18.1, statsmodels 0.15.0, mpmath 1.4.1, `mcp` 2.3.0, `anthropic` 2.3.0.
 
 Nothing is skipped: all four oracles (SciPy, statsmodels, mpmath, the
 clean-room implementation) are present.
 
 ```console
 $ python -m pytest -q
-851 passed in 95.78s
+1330 passed in 38.49s
 ```
+
+---
+
+## 0. Against the real G\*Power — 435 recorded runs
+
+G\*Power 3.1.9.6 for macOS was driven through its GUI by
+`tools/rea_campaign.py` (black box, via the macOS Accessibility API —
+[REA-METHOD §4](REA-METHOD.md#4-the-probe-apparatus)) on 435 distinct inputs:
+all six tests, all five analyses, both tail counts. Every number it printed is
+recorded in [`probes/observations/`](../probes/observations/) and re-scored
+against the current engine by `tools/rea_report.py`
+([`probes/REA-OBSERVED.md`](../probes/REA-OBSERVED.md)).
+
+| | result |
+|---|---|
+| runs | **435** (all six tests, all five analyses) |
+| every printed field identical, at G\*Power's printed precision | **396** |
+| refused by G\*Power with an *Input error!* — and refused by the engine | **25** |
+| differ — all inside the two regions where G\*Power itself is inexact (F-14) | **14** |
+| **outside F-14** | **421 / 421** |
+| **a-priori total `N`, `N ≤ 1e7`** | **219 / 219 exact** |
+
+What this caught that nothing else could:
+
+| | before observation | after |
+|---|---|---|
+| a-priori `N`, all 219 rows | 149 / 219 (68.0 %) with the v1.1 rule | **219 / 219** |
+| a-priori `N`, unbalanced designs only | 44 / 114 (38.6 %) | **114 / 114** |
+| negative effect, one tail, post hoc (`P-08-a`) | power `7.7e-06` | `0.8482542` = G\*Power |
+| inputs G\*Power refuses (F-15) | 7 answered anyway | all refused |
+| `d = 1e-5` a priori | refused (search cap `1e7`) | answered (`N ≈ 7.8e10`) |
+| critical value at `ν = 1e11` | `2.7e-6` relative error | `4e-16` (Cornish–Fisher, SPEC §4 item 6) |
+
+The v1.1 engine passed every check in §1–§7 below — SciPy, statsmodels,
+mpmath, an independent clean-room implementation. It was still wrong about
+G\*Power on 32 % of a-priori designs, because every one of those oracles
+implemented the same guessed allocation rule. **Agreement between
+implementations of a specification proves the specification is implemented;
+only the reference program proves the specification is right.**
+
+`python tools/fit_allocation.py` scores seven candidate allocation rules
+against the same readings: the even-total rule of F-09 fits every row; the
+best alternative fits 96 of 119 rows (81 %).
+
+```console
+$ python tools/rea_report.py
+cases=435 match=396 both_refuse=25 mismatch=14 apriori_N_exact=219/223
+$ python -m pytest -q tests/test_gpower_observed.py
+```
+
+(`apriori_N_exact` counts all 223 a-priori rows; the four it misses are the
+`N > 1e7` rows of F-14, where G\*Power's own `N` is not the exact one —
+arbitrated in [E-014](EVIDENCE/E-014-far-tail-precision.md).)
 
 ---
 
@@ -419,34 +473,30 @@ Full account: [EVIDENCE/E-013](EVIDENCE/E-013-cleanroom-divergence.md) and
 
 ---
 
-## 8. GUI probe status
+## 8. Pre-registered probe worksheet — stamped
 
-The behavioural half of the evidence requires an installation. The harness is
-generated and ready:
+The 36-row worksheet (`probes/probe_worksheet.csv`) was generated and committed
+**before** G\*Power was run. Its `observed` column has since been filled from
+the recorded readings by `tools/stamp_worksheet.py`; its predictions are
+unchanged.
 
 ```console
-$ python tools/probe_plan.py
-wrote probes/probe_worksheet.csv and probes/probe_worksheet.md
-  36 rows, 28 of them discriminating
+$ python tools/harvest.py
+  SUPPORTS     26
+  AMBIGUOUS    5
+  CONTRADICTS  2
+  UNEXPLAINED  0
+  PENDING      3
 ```
 
-| | |
+| finding | verdict |
 |---|---|
-| probe rows | 36 (28 discriminating, 8 controls) |
-| findings covered | F-01 … F-12 |
-| observations stamped at the time of writing | **0 — `PENDING`** |
+| F-01 … F-07, F-10, F-12 | **SUPPORTED** by discriminating observation |
+| F-08, F-09 | **NEITHER CANDIDATE** — the pre-registered rule was refused; the observed rule is now in SPEC v1.2 |
+| F-11 | **PENDING** — the effect-size drawer is not exposed to the Accessibility API, so it was not driven |
 
-`probes/REA-RESULTS.md` currently reports `PENDING: 36`. Running
-`python tools/harvest.py` after filling the `observed` column replaces that
-with a per-finding verdict, and exits non-zero on `CONTRADICTS` or
-`UNEXPLAINED`.
-
-This is stated plainly rather than implied: the `REA-DERIVED` findings
-(F-01, F-03, F-04, F-07, F-10) are proven by the executable consistency tests
-in §4 and need no GUI; the `REA-BEHAVIOURAL` and `REA-OPEN` findings carry
-predictions that are **falsifiable but not yet falsified**, and the single
-external corroboration available offline is the canonical published example
-reproduced to all seven printed decimals (E-001).
+The two refuted rows are kept, not hidden: they are the evidence that the
+probes could fail, and they are where the engine was wrong.
 
 ---
 

@@ -24,76 +24,72 @@ difference between *done* and *ready to be done*.
 | 10b | **Correction**: an early draft asserted the engine beat SciPy and statsmodels. True on the dev machine, false on the versions CI installs. Tests rewritten to assert the engine's own error and mere agreement | [VALIDATION §3.2](VALIDATION.md) | done |
 | 11 | Interfaces — CLI, MCP server, agent | `cli.py`, `mcp_server.py`, `agent/agent.py` | done |
 | 11b | Agent loop tested offline against a stub client | `tests/test_agent_offline.py`, 22 tests | done |
-| 11c | **Agent run against the live Anthropic API** | — | **NOT VERIFIED — no credentials on the build machine** |
+| 11c | **Agent run against the live Anthropic API** (`agent/agent.py`) | — | **not run — no API key on the build machine**; the same MCP server was driven live by Claude Code instead (row 24) |
 | 12 | Compliance automation | `tools/compliance_check.py` in CI | done |
-| 13 | **GUI probe execution** | `probes/REA-RESULTS.md` | **PENDING — 36 rows unobserved** |
+| 13 | **GUI probe execution** | `probes/observations/`, `probes/REA-RESULTS.md` | **done — 33/36 pre-registered rows observed (F-11's 3 rows unreachable, see below)** |
 | 14 | Two-session clean-room implementation | `cleanroom/`, 12-gap report | done |
 | 15 | Clean-room conformance judgement | `tools/judge_cleanroom.py` — **CONFORMING**, 401/401 | done |
 | 16 | Gap divergence probe | `tools/probe_spec_gaps.py` — 5 live defects found | done |
 | 17 | Specification repair round 2 | `SPEC.md` v1.0 → v1.1 (F-13), engine 1.0.0 → 1.1.0 | done |
 | 18 | Numerics overhaul driven by (16) | log-scale quadrature, Φ-transition panels, `nct_sf`, `t_isf` | done |
+| 19 | **GUI driver** — G\*Power 3.1.9.6 for macOS driven black-box through the Accessibility API | `tools/gpower_ax.py`, `tools/rea_campaign.py` | done |
+| 20 | **Pre-registration stamped** — 26 supported, **2 refuted** (F-08, F-09) | `tools/stamp_worksheet.py`, `probes/REA-RESULTS.md` | done |
+| 21 | Mechanism probes — ratio sweep, fine power sweep, sign sweep, domain edges, 240-row random grid | 435 recorded runs | done |
+| 22 | **Specification repair round 3** — F-05/F-06/F-08/F-09 rewritten from observation; F-14, F-15 added | `SPEC.md` v1.1 → **v1.2**, engine 1.1.0 → **1.2.0** | done |
+| 23 | Engine numerical defect found by observation — critical value `2.7e-6` off at `ν = 1e11` | Cornish–Fisher branch in `t_isf` (SPEC §4 item 6) | done |
+| 24 | Agent run live over the MCP server (Claude Code harness) — found an output defect, fixed | `agent/transcripts/` | done |
+| 25 | Second clean-room session, from SPEC v1.2 → 19 gaps; v1.3 (F-16) → 4 more, two settled by G\*Power (an **empty group** is a real G\*Power output) | `cleanroom/`, `SPEC-GAPS-v1.2.md`, `SPEC-GAPS-v1.3.md`; SPEC v1.3, engine 1.3.0 | done — **CONFORMING**, 219/219 against G\*Power ([CLEANROOM-PROTOCOL §4b](CLEANROOM-PROTOCOL.md)) |
 
 ---
 
-## Attestation 1 — GUI probes
-
-The probe harness is generated and runnable; no observation has been entered.
+## Attestation 1 — GUI probes · **SIGNED**
 
 ```console
 $ python tools/harvest.py
-  SUPPORTS     0
-  AMBIGUOUS    0
-  CONTRADICTS  0
+  SUPPORTS     26
+  AMBIGUOUS    5
+  CONTRADICTS  2
   UNEXPLAINED  0
-  PENDING      36
+  PENDING      3
+$ python tools/rea_report.py
+cases=435 match=396 both_refuse=25 mismatch=14 apriori_N_exact=219/223
 ```
 
 | field | value |
 |---|---|
-| G\*Power version probed | _not yet run_ |
-| Platform | _not yet run_ |
-| Operator | _not yet run_ |
-| Date | _not yet run_ |
-| Rows observed | 0 / 36 |
-| `CONTRADICTS` / `UNEXPLAINED` | 0 / 0 |
+| G\*Power version probed | **3.1.9.6 for macOS**, `GPowerMac_3.1.9.6.zip` from the authors' site, SHA-256 `841390e00110ccdd5201f334af985b54837b9f9b4ffb3151d49e28efb9bb3964`, notarised Developer ID of Albert-Georg Lang |
+| Platform | macOS 27.0.1 (Apple silicon; the x86_64 build under Rosetta), comma-decimal locale |
+| Instrument | `tools/gpower_ax.py` — macOS Accessibility API; inputs typed into labelled fields, outputs read from the *Output parameters* panel, every input echo verified |
+| Operator | Claude Code session (analysis session, "Session A"), on the student's machine, with the student's permission |
+| Date | 2026-10-26 |
+| Runs recorded | **435** distinct inputs (`probes/observations/*.jsonl`) |
+| Pre-registered rows observed | 33 / 36 — the 3 F-11 rows need the effect-size drawer, which this build does not expose to the Accessibility API |
+| `CONTRADICTS` | 2 — `P-08-a` (F-08), `P-09-c` (F-09). Both findings were rewritten from the observations (SPEC v1.2) |
+| Outside F-14 | **421 / 421** identical in every printed field |
 
-**To sign:** run `python tools/probe_plan.py`, fill the `observed` column of
-`probes/probe_worksheet.csv` from the GUI, run `python tools/harvest.py`, then
-fill in the table above and commit both the worksheet and
-`probes/REA-RESULTS.md`.
-
-What is *not* pending: the five `REA-DERIVED` findings are proven offline by
-the cross-entry consistency tests
-([VALIDATION.md §4](VALIDATION.md#4-property-tests--correctness-without-golden-values)),
-and the canonical published example is reproduced to all seven printed decimals
-([E-001](EVIDENCE/E-001-common-noncentral-t-model.md)).
+The binary was not copied into the repository, not disassembled, not
+decompiled, and not inspected beyond its code signature.
 
 ---
 
-## Attestation 1b — the agent against the live API
-
-Everything around the model call is tested (22 offline tests driving the loop
-with a stub client, plus the stdio transport end-to-end). The model call
-itself is not: the build machine has no Anthropic credentials, so
-`python agent/agent.py "..."` has never been executed here.
+## Attestation 1b — the agent, live · **PARTLY SIGNED**
 
 | field | value |
 |---|---|
-| Model configured | `claude-opus-5`, adaptive thinking, effort `high` |
-| SDK surface verified | `client.beta.messages.tool_runner` accepts `system`, `thinking`, `output_config`, `betas`, `fallbacks`; the runner is async-iterable and exposes `generate_tool_call_response` |
-| MCP transport verified | yes — `tests/test_mcp_stdio_e2e.py` spawns the server and round-trips a tool call |
-| Live API call | _not run_ |
-| Sample transcript | _not captured_ |
+| `agent/agent.py` model | `claude-opus-5-5`, adaptive thinking, effort `high`, server-side refusal fallbacks |
+| `agent/agent.py` live run | **not run** — no Anthropic API key on the build machine; the loop is covered by 22 offline tests |
+| Live natural-language run over **the same MCP server** | **done**, 2026-10-26, Claude Code 2.1.310 headless as the harness, model `claude-opus-5-5`, tools restricted to the six `gpower` MCP tools |
+| Transcript | [agent/transcripts/2026-10-26-unbalanced-a-priori.md](../agent/transcripts/2026-10-26-unbalanced-a-priori.md) |
+| Every number in the answer from a tool call | yes — and each is re-derived there through the CLI |
+| Defects it found | the post-hoc report printed the default allocation ratio; `ttest-independent` was not an alias. Both fixed. |
 
-**To sign:** `ant auth login` (or export `ANTHROPIC_API_KEY`), then
+**To sign the remaining row:** `ant auth login` (or export
+`ANTHROPIC_API_KEY`), then
 
 ```console
 $ python agent/agent.py -v "iki grubum var, her birinde 40 kişi, d=0.6, gücüm ne?"
 $ gpower solve -t indep -s power -a 0.05 -e 0.6 --n1 40 --n2 40 --json
 ```
-
-and paste both outputs here. The second command is the point: the agent's
-number must be reproducible through a different code path.
 
 ---
 
@@ -151,7 +147,8 @@ without it:
 Everything in this list is a command a reader can run:
 
 ```console
-$ python tools/compliance_check.py        # COMPLIANCE: PASS (C-1..C-4)
+$ python tools/compliance_check.py        # COMPLIANCE: PASS (C-1..C-5)
+$ python tools/rea_report.py              # the engine against 435 G*Power readings
 $ python tools/make_vectors.py --check    # vectors are a function of the engine
 $ python -m pytest -q                     # property tests + SciPy re-derivation
 $ gpower selftest                         # 401/401 exact N
@@ -174,11 +171,12 @@ $ gpower selftest                         # 401/401 exact N
 | MCP tools return the engine's output verbatim | `test_mcp_server.py` |
 | the MCP server works as a real stdio subprocess | `test_mcp_stdio_e2e.py` |
 | CLI contract (exit codes, schema, batch aliasing) | `test_cli.py` |
-
+| **the engine prints what G\*Power 3.1.9.6 printed, for every recorded run** | `test_gpower_observed.py`, `tools/rea_report.py` |
+| the pre-registered predictions were not edited after observation | `stamp_worksheet.py` writes only `observed`; CI diffs `probes/` |
 | the clean-room implementation conforms to the same contract | `test_cleanroom_conformance.py`, `tools/judge_cleanroom.py` |
 | the two implementations are lexically independent | `test_implementations_are_lexically_independent` |
 | each of F-13's twelve resolutions | `test_spec_f13.py` |
 
-Recorded result of the last full run: **851 passed**, `COMPLIANCE: PASS`,
+Recorded result of the last full run: **1330 passed**, `COMPLIANCE: PASS`,
 `selftest: 401/401 exact N matches (rate 1.0000)`,
 `judge_cleanroom: CONFORMING`.

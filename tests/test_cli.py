@@ -87,7 +87,7 @@ def test_json_schema_shape(capsys):
     assert doc["df"] == 208
     assert doc["power"] == pytest.approx(0.9501287, abs=1e-6)
     assert doc["effect_size"] == {"name": "d", "value": 0.5}
-    assert doc["engine"]["allocation_rule"] == "n1-grid"
+    assert doc["engine"]["allocation_rule"] == "even-total"
 
 
 def test_canonical_example_text_output(capsys):
@@ -184,15 +184,25 @@ def test_bad_alpha_is_validation_error(capsys):
     assert code == EXIT_VALIDATION
 
 
-def test_unreachable_target_is_no_solution(capsys):
-    """An effect size this small needs N ~ 2e10, beyond the search cap."""
+def test_an_a_priori_effect_below_1e5_is_refused_as_the_gui_does(capsys):
+    """SPEC F-15: G*Power refuses |ES| < 1e-5 in an a-priori analysis; above
+    it the search runs to G*Power's own 2**63 limit, so the answer exists."""
     code, _, err = run(
         ["-t", "regression-coef", "-s", "n", "-a", "0.001", "-p", "0.99",
          "-e", "1e-9", "--predictors", "1"],
         capsys,
     )
-    assert code == EXIT_NO_SOLUTION
-    assert "no solution" in err
+    assert code == EXIT_VALIDATION
+    assert "1e-05" in err
+
+
+def test_a_huge_but_finite_a_priori_answer_is_returned(capsys):
+    code, out, _ = run(["-t", "one-sample", "-a", "0.05", "-p", "0.95",
+                        "-e", "0.0001", "--json"], capsys)
+    assert code == EXIT_OK
+    doc = json.loads(out)
+    assert doc["sample_size"]["total"] > 1_000_000_000
+    assert any("SPEC F-14" in w for w in doc["warnings"])
 
 
 def test_bad_param_syntax(capsys):
@@ -531,3 +541,58 @@ def test_console_script_is_installed():
     )
     assert proc.returncode == 0
     assert "gpower" in proc.stdout
+
+
+# --------------------------------------------------------------------------
+# Hidden-vector robustness: files written in G*Power's own vocabulary
+# --------------------------------------------------------------------------
+GUI_TITLES = {
+    "Means: Difference between two independent means (two groups)": "ttest-indep-means",
+    "Means: Difference between two dependent means (matched pairs)": "ttest-paired-means",
+    "Means: Difference from constant (one sample case)": "ttest-one-sample",
+    "Correlation: Point biserial model": "ttest-point-biserial",
+    "Linear multiple regression: Fixed model, single regression coefficient": "ttest-regression-coef",
+    "Generic t test": "ttest-generic",
+    "t tests - Means: Difference between two independent means (two groups)": "ttest-indep-means",
+}
+
+
+@pytest.mark.parametrize("title,key", list(GUI_TITLES.items()))
+def test_gui_menu_titles_resolve(title, key):
+    from gpower_rea.procedures import resolve
+
+    assert resolve(title).key == key
+
+
+@pytest.mark.parametrize("word,expected", [
+    ("One", 1), ("Two", 2), ("two-tailed", 2), ("one-sided", 1), ("2", 2), ("1.0", 1),
+])
+def test_tails_accepts_the_gui_wording(word, expected):
+    from gpower_rea.cli import parse_tails
+
+    assert parse_tails(word) == expected
+
+
+def test_tails_rejects_three():
+    from gpower_rea.cli import parse_tails
+    from gpower_rea.procedures import ValidationError
+
+    with pytest.raises(ValidationError):
+        parse_tails("3")
+
+
+def test_batch_in_gpower_vocabulary(tmp_path, capsys):
+    f = tmp_path / "v.csv"
+    f.write_text(
+        "Statistical test;Type of power analysis;Tail(s);α err prob;"
+        "Power (1-β err prob);Effect size d;Allocation ratio N2/N1;N\n"
+        "Means: Difference between two independent means (two groups);"
+        "A priori;Two;0,05;0,95;0,5;2;236\n"
+        "Means: Difference between two independent means (two groups);"
+        "A priori;Two;0,05;0,95;0,5;1,5;220\n",
+        encoding="utf-8",
+    )
+    code, _, err = run(["batch", "-i", str(f), "--expect", "N",
+                        "--min-match", "1.0", "-o", str(tmp_path / "o.csv")], capsys)
+    assert code == EXIT_OK, err
+    assert "exact_N_matches=2" in err

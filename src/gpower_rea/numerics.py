@@ -354,13 +354,24 @@ def t_isf(q: float, df: float) -> float:
             f"the range of a double (it is about exp({log_asym:.1f}))"
         )
     z = -norm_ppf(q)
-    z3, z5, z7 = z**3, z**5, z**7
+    z3, z5, z7, z9 = z**3, z**5, z**7, z**9
     cf = (
         z
         + (z3 + z) / (4.0 * df)
         + (5.0 * z5 + 16.0 * z3 + 3.0 * z) / (96.0 * df * df)
         + (3.0 * z7 + 19.0 * z5 + 17.0 * z3 - 15.0 * z) / (384.0 * df**3)
+        + (79.0 * z9 + 776.0 * z7 + 1482.0 * z5 - 1920.0 * z3 - 945.0 * z)
+        / (92160.0 * df**4)
     )
+    # For a very large df the Newton refinement below is the inaccurate part:
+    # t_sf forms an incomplete beta at x = df/(df+t^2) -> 1 and loses about
+    # log10(df) digits (2.7e-6 relative at df = 1e11).  The four-term
+    # Cornish-Fisher series (Abramowitz & Stegun 26.7.5) is then exact to
+    # rounding: measured <= 4e-16 relative against a 40-digit computation
+    # wherever df >= 1e5 and df >= 1000 z^2.  Such df occur in practice -- an
+    # a-priori search for d = 1e-5 reaches N = 7.8e10 (SPEC F-15).
+    if df >= 1e5 and df >= 1000.0 * z * z:
+        return cf
     asym = math.exp(log_asym) if log_asym < 709.0 else math.inf
     # The asymptotic form is the better guess once it exceeds the
     # Cornish-Fisher one, which is exactly the regime it is meant for.

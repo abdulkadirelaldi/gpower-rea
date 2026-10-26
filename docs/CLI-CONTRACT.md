@@ -47,11 +47,11 @@ $ gpower       --test indep --alpha 0.05 --power 0.95 --effect-size 0.5
 | `-a`, `--alpha` | | float | α error probability, in `(0,1)` |
 | `-p`, `--power` | | float | target power, in `(0,1)` |
 | `-e`, `--effect-size` | `--es` | float | `d` / `dz` / `r` / `f²` / `δ`, per test |
-| `--tails` | | `1`\|`2` | default `2` |
+| `--tails` | | `1`\|`2` | default `2`; also `One`/`Two`, `one-sided`, `two-tailed` — the GUI's own wording |
 | `-n`, `--n` | | int | total sample size |
 | `--n1`, `--n2` | | int | per-group sizes (two-group test) |
 | `--ratio` | `--allocation-ratio` | float | `N₂/N₁`, default `1` |
-| `--allocation-rule` | | enum | `n1-grid` (default) \| `total-grid` — see [E-009](EVIDENCE/E-009-allocation-rounding.md) |
+| `--allocation-rule` | | enum | `even-total` (default — what G\*Power does, [E-009](EVIDENCE/E-009-allocation-rounding.md)) \| `n1-grid` \| `total-grid` (the two refuted v1.1 candidates, kept to reproduce old output) |
 | `--q` | `--beta-alpha-ratio` | float | `β/α` for `--solve compromise` |
 | `--predictors` | | int | regression: number of predictors |
 | `--df` | | float | generic t test: degrees of freedom |
@@ -100,8 +100,8 @@ default. The one exception is `--tails`, which defaults to `2`.
   },
   "target": { "power": 0.95 },
   "engine": {
-    "name": "gpower-rea", "version": "1.0.0",
-    "spec": "SPEC.md v1.0", "allocation_rule": "n1-grid"
+    "name": "gpower-rea", "version": "1.3.0",
+    "spec": "SPEC.md v1.3", "allocation_rule": "even-total"
   },
   "warnings": []
 }
@@ -156,7 +156,7 @@ protocol:
 
 | canonical | accepted spellings (excerpt) |
 |---|---|
-| `test` | `test`, `test_id`, `statistical_test`, `procedure` |
+| `test` | `test`, `test_id`, `statistical_test`, `procedure` — values may be a key, an alias, or G\*Power's own menu title (`Means: Difference between two independent means (two groups)`, optionally prefixed `t tests - `) |
 | `solve` | `solve`, `solve_for`, `analysis`, `type`, `Type of power analysis` |
 | `alpha` | `alpha`, `α err prob`, `alpha err prob`, `sig_level` |
 | `power` | `power`, `Power (1-β err prob)`, `target_power` |
@@ -182,6 +182,7 @@ Unrecognised columns are **passed through untouched** to the output.
 | `1,200` in an **integer** field (`n`, `n1`, `n2`, `tails`, `predictors`) | `1200` — a sample size cannot be fractional, so the comma must group thousands |
 | `1,234.5` | `1234.5` — a dot is present, so commas group thousands |
 | `A priori`, `a priori: compute required sample size` | `solve = n` |
+| `One`, `Two`, `two-tailed`, `one-sided` in `tails` | `1`, `2` |
 | `Post hoc`, `Criterion`, `Sensitivity`, `Compromise` | `power`, `alpha`, `effect-size`, `compromise` |
 | empty, `NA`, `N/A`, `NaN`, `null`, `none`, `-` | absent |
 
@@ -233,8 +234,8 @@ The summary line goes to stderr so that `-o -` stays machine-parsable.
 | `0` | OK | success |
 | `1` | internal | unexpected failure / interrupt |
 | `2` | usage | unknown flag, missing `--test`, bad `--param` syntax, missing input file |
-| `3` | validation | input outside a documented domain: unknown test, `α ∉ (0,1)`, `tails ∉ {1,2}`, `df ≤ 0`, `|r| ≥ 1`, unknown extra parameter |
-| `4` | no solution | the requested quantity is unattainable inside the search domain |
+| `3` | validation | input outside a documented domain: unknown test, `α ∉ (0,1)`, `tails ∉ {1,2}`, `df ≤ 0`, unknown extra parameter — and everything G\*Power itself refuses ([F-15](../SPEC.md#f-15--the-input-domain-gpower-accepts)): `r ∉ (0, 0.999999]`, `f² ∉ [0, 20)`, a-priori `\|ES\| < 1e-5`, `power < α`, `q ∉ [0.01, 100]`, an explicit design with `N < 3` |
+| `4` | no solution | the requested quantity is unattainable inside the search domain (the a-priori search runs to `2⁶³ − 2`, G\*Power's own limit, so this is now practically unreachable for a priori) |
 | `5` | conformance | `batch --min-match` or `selftest --min-match` not met |
 
 Errors go to stderr, prefixed `gpower: `. Nothing but the requested output is

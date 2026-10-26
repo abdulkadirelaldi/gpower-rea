@@ -56,7 +56,11 @@ def _same(observed: str, predicted: str) -> bool | None:
     pred = _numbers(predicted)
     obs = _numbers(observed)
     if not pred:
-        return None
+        # A qualitative prediction ("identical across the two menu entries")
+        # is matched verbatim; a dash means "no competing value".
+        if predicted.strip() in ("", "-"):
+            return None
+        return observed.strip().lower() == predicted.strip().lower()
     if len(pred) != len(obs):
         return False
     for p, o in zip(pred, obs):
@@ -88,6 +92,9 @@ def classify(row: dict) -> str:
 
 
 def finding_verdict(verdicts: list[str]) -> str:
+    if "CONTRADICTS" in verdicts and "SUPPORTS" in verdicts:
+        return ("NEITHER CANDIDATE — rows split between them; a third "
+                "behaviour exists")
     if "CONTRADICTS" in verdicts:
         return "CONTRADICTED — the competing candidate matches; fix the engine"
     if "UNEXPLAINED" in verdicts:

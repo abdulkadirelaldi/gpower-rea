@@ -28,7 +28,7 @@ The check runs in CI and as `tests/test_compliance.py`.
 
 ```
                          ┌───────────────────────────────┐
-  natural language ──────►  agent/agent.py               │   Claude Opus 5
+  natural language ──────►  agent/agent.py               │   Claude Opus 5.5
                          │  (Anthropic SDK, tool loop)   │   + MCP client
                          └──────────────┬────────────────┘
                                         │ MCP (stdio)

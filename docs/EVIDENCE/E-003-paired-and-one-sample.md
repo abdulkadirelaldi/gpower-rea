@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Finding** | [F-03](../../SPEC.md#f-03--one-sample-and-matched-pairs-ν--n---1-δ--es√n) |
-| **Status** | `REA-DERIVED` (probe specified for confirmation) |
+| **Status** | `[REA] DERIVED + OBSERVED` — observed on G\*Power 3.1.9.6 (macOS) |
 | **Method** | Cross-entry identity probing |
 | **Target** | G\*Power 3.1.9.x, `t tests` |
 | **Probe id** | `P-03` |
@@ -97,10 +97,24 @@ The reduction in `σ_diff` from the pre-post correlation is already absorbed
 into `dz` by the effect-size calculator (see E-011); applying it twice is the
 other common error.
 
+## [REA] Observation — G\*Power 3.1.9.6
+
+Read off the GUI's *Output parameters* panel by `tools/rea_campaign.py`
+(raw records in [`probes/observations/`](../../probes/observations/)). The
+predictions were registered in `probes/probe_worksheet.csv` before any
+observation was made, and are shown unchanged.
+
+| probe | read | G\*Power printed | pre-registered engine prediction | competing prediction | verdict |
+|---|---|---|---|---|---|
+| `P-03-a` | N / Df / Actual power | `54 / 53 / 0.9502120` | `54 / 53 / 0.9502120` | `27 (if the field counts observations)` | **SUPPORTS** |
+| `P-03-b` | whole output panel | `identical across the two menu entries` | `identical across the two menu entries` | `different Df if one entry counted observations` | **SUPPORTS** |
+
+Every other field G\*Power printed for these rows also matches the current
+engine — `tests/test_gpower_observed.py` checks each one.
+
 ## Verdict
 
-Derivation holds and is enforced by an executable test; GUI probe specified
-for independent confirmation.
+**[REA] F-03 — observed.** *Total sample size* counts pairs: `N = 54`, `Df = 53`, and the matched-pairs and one-sample entries print identical output panels for the same effect size.
 
 ## Re-run
 

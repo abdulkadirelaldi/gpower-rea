@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Finding** | [F-05](../../SPEC.md#f-05--balanced-a-priori-search-runs-over-n-per-group-not-total-n) |
-| **Status** | `REA-BEHAVIOURAL` |
+| **Status** | `[REA] OBSERVED` — observed on G\*Power 3.1.9.6 (macOS) |
 | **Method** | Search-space probing with a counter-example design |
 | **Target** | G\*Power 3.1.9.x, `t tests` → *Means: Difference between two independent means (two groups)* |
 | **Probe id** | `P-05` |
@@ -151,10 +151,26 @@ mapping from step to allocation is a pluggable rule
 (`gpower_rea.engine.ALLOCATION_RULES`). The balanced case is the `ratio = 1`
 specialisation of `n1-grid`; see E-009 for the unbalanced case.
 
+## [REA] Observation — G\*Power 3.1.9.6
+
+Read off the GUI's *Output parameters* panel by `tools/rea_campaign.py`
+(raw records in [`probes/observations/`](../../probes/observations/)). The
+predictions were registered in `probes/probe_worksheet.csv` before any
+observation was made, and are shown unchanged.
+
+| probe | read | G\*Power printed | pre-registered engine prediction | competing prediction | verdict |
+|---|---|---|---|---|---|
+| `P-05-a` | Total sample size | `352` | `352` | `351` | **SUPPORTS** |
+| `P-05-b` | Total sample size | `242` | `242` | `241` | **SUPPORTS** |
+| `P-05-c` | Total sample size | `210` | `210` | `210` | **AMBIGUOUS** |
+| `P-05-d` | Total sample size | `96` | `96` | `96` | **AMBIGUOUS** |
+
+Every other field G\*Power printed for these rows also matches the current
+engine — `tests/test_gpower_observed.py` checks each one.
+
 ## Verdict
 
-Implemented as per-group search; counter-example rows above are the
-discriminator; parity consequence locked by test.
+**[REA] F-05 — observed.** G\*Power reports the even total in both counter-example rows (`352`, `242`) although the odd total already suffices. Every one of the a-priori two-group totals recorded is even — the balanced case of the even-total rule of F-09.
 
 ## Re-run
 

@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Finding** | [F-06](../../SPEC.md#f-06--minimality-and-actual-power-is-recomputed) |
-| **Status** | `REA-BEHAVIOURAL` |
+| **Status** | `[REA] OBSERVED`, one clause refuted — observed on G\*Power 3.1.9.6 (macOS) |
 | **Method** | Boundary probing + output-field semantics |
 | **Target** | G\*Power 3.1.9.x, `t tests` |
 | **Probe id** | `P-06` |
@@ -93,10 +93,24 @@ in the direction that would mask an off-by-one in `N`. The tolerance adopted
 in [SPEC §F-12](../../SPEC.md#f-12--boundary-behaviour-and-reported-precision)
 is `5e-7` on power and *exact* on `N`.
 
+## [REA] Observation — G\*Power 3.1.9.6
+
+Read off the GUI's *Output parameters* panel by `tools/rea_campaign.py`
+(raw records in [`probes/observations/`](../../probes/observations/)). The
+predictions were registered in `probes/probe_worksheet.csv` before any
+observation was made, and are shown unchanged.
+
+| probe | read | G\*Power printed | pre-registered engine prediction | competing prediction | verdict |
+|---|---|---|---|---|---|
+| `P-06-a` | Actual power | `0.9501287` | `0.9501287` | `0.9500000 (if the target were echoed back)` | **SUPPORTS** |
+| `P-06-b` | N / Actual power | `301 / 0.8000014` | `301 / 0.8000014` | `302 (if a >1.4e-6 epsilon slack were used)` | **SUPPORTS** |
+
+Every other field G\*Power printed for these rows also matches the current
+engine — `tests/test_gpower_observed.py` checks each one.
+
 ## Verdict
 
-Both behaviours implemented; the `0.9501287` vs `0.9500000` row is the
-discriminator for (2), and the `d = 0.162` row for (1).
+**[REA] F-06 — observed.** The comparison is `≥` and *Actual power* is recomputed (`0.9501287`, not `0.9500000`). **Refuted clause:** "actual power exceeds the target" is false for `R ≠ 1` — sweep row `S-019` (`R = 1.5`, target `0.9495`) prints *Actual power* `0.9494095`. See F-09 for why.
 
 ## Re-run
 

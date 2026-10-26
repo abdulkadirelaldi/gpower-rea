@@ -195,7 +195,8 @@ class Procedure:
 _INDEP = Procedure(
     key="ttest-indep-means",
     title="Means: Difference between two independent means (two groups)",
-    aliases=("indep", "two-sample", "independent-means", "ttest2"),
+    aliases=("indep", "two-sample", "independent-means", "ttest2", "ttest-independent",
+             "independent", "two-groups", "between-subjects"),
     effect_size_name="d",
     effect_size_label="Effect size d = (mu1 - mu2) / sigma",
     two_group=True,
@@ -259,8 +260,13 @@ _POINT_BISERIAL = Procedure(
     df_fn=lambda s, e: float(s.total - 2),
     ncp_fn=lambda s, r, e: r * math.sqrt(s.total / (1.0 - r * r)),
     min_sample_fn=lambda e: Sample(3),
-    es_bounds=(1e-12, 1.0 - 1e-12),
-    es_check=lambda r: 0.0 < abs(r) < 1.0,
+    es_bounds=(1e-12, 0.999999),
+    # Observed (E-008, E-015): the GUI refuses r outside [0, 0.999999] with
+    # "Effect size r is outside the admissible range (0, 0.999999)" -- the
+    # |r| in its label is enforced, so the F-08 sign rule does not reach this
+    # test; 0.9999995 is refused, 0.999999 accepted, and despite the message
+    # r = 0 is accepted too (post hoc returns alpha; X-G2-06).
+    es_check=lambda r: 0.0 <= r <= 0.999999,
     spec_refs=("F-01", "F-02", "F-04"),
     notes=(
         "Consistency check: with a balanced dichotomy the two-group d maps to "
@@ -293,7 +299,10 @@ _REGRESSION = Procedure(
     # SPEC F-13 / G-02: f2 is a squared quantity, so the F-08 sign rule does
     # not extend to it -- delta = sqrt(f2*N) has no real value for f2 < 0.
     # Reject it with a clear message instead of letting math.sqrt raise.
-    es_check=lambda f2: f2 >= 0.0,
+    # Observed (E-015): the GUI's range is (-20, 20); a negative f2 passes
+    # its range check and then fails with "Internal Math Error", so only
+    # [0, 20) yields a result.
+    es_check=lambda f2: 0.0 <= f2 < 20.0,
     spec_refs=("F-01", "F-02", "F-07", "F-13"),
     notes=(
         "Reduction check: with predictors=1 and f2 = r^2/(1-r^2) this collapses "
@@ -365,6 +374,12 @@ def _norm_token(text: str) -> str:
 
 
 _NORM_INDEX = {_norm_token(k): v for k, v in _ALIAS_INDEX.items()}
+# The menu titles G*Power prints ("Means: Difference between two independent
+# means (two groups)") resolve too, so a vector file exported with the GUI's
+# own wording needs no translation table.
+for _p in PROCEDURES.values():
+    _NORM_INDEX.setdefault(_norm_token(_p.title), _p.key)
+_NORM_INDEX.setdefault(_norm_token("Generic t test"), "ttest-generic")
 
 
 def resolve(name: str) -> Procedure:
@@ -373,7 +388,13 @@ def resolve(name: str) -> Procedure:
         raise ValidationError("no test specified (use --test; see `gpower list`)")
     key = _ALIAS_INDEX.get(str(name).strip().lower())
     if key is None:
-        key = _NORM_INDEX.get(_norm_token(str(name)))
+        token = _norm_token(str(name))
+        key = _NORM_INDEX.get(token)
+        # "t tests - Means: ..." as in the GUI protocol header, or a stray
+        # leading bullet / family name.
+        for prefix in ("ttests", "ttest", "t"):
+            if key is None and token.startswith(prefix):
+                key = _NORM_INDEX.get(token[len(prefix):])
     if key is None:
         raise ValidationError(
             f"unknown test {name!r}; known tests: "

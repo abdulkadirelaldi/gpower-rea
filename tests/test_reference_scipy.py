@@ -22,7 +22,6 @@ sp = pytest.importorskip("scipy.stats", reason="scipy not installed")
 
 from gpower_rea import solve  # noqa: E402
 from gpower_rea.cli import PUBLIC_VECTORS  # noqa: E402
-from gpower_rea.engine import _round_half_up  # noqa: E402
 
 
 # --------------------------------------------------------------------------
@@ -60,14 +59,15 @@ def ref_required_n(
 ) -> int:
     """Brute-force linear scan for the smallest sufficient design."""
     if test == "ttest-indep-means":
+        # SPEC F-09 (observed): even totals only, tested on the unrounded split.
         r = 1.0 if ratio is None else ratio
-        n1 = 2
-        while n1 <= 200_000:
-            n2 = max(_round_half_up(r * n1), 2)
-            df, ncp = ref_df_ncp(test, es, n1, n2, predictors)
-            if df > 0 and ref_power(df, ncp, alpha, tails) >= target:
-                return n1 + n2
-            n1 += 1
+        total = 4
+        while total <= 400_000:
+            df = float(total - 2)
+            ncp = es * math.sqrt(total * r) / (1.0 + r)
+            if ref_power(df, ncp, alpha, tails) >= target:
+                return total
+            total += 2
         raise AssertionError("reference search exhausted")
     start = {
         "ttest-one-sample": 2,

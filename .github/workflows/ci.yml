@@ -49,16 +49,20 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - run: pip install -e .
+      - run: pip install -e . pytest
       - name: no binary, no decompiler output, one engine, findings in sync
         run: python tools/compliance_check.py
       - name: reference vectors are not stale
         run: python tools/make_vectors.py --check
-      - name: probe worksheet regenerates identically
+      - name: pre-registered worksheet, verdicts and observation report are current
         run: |
-          python tools/probe_plan.py
+          python tools/stamp_worksheet.py
+          python tools/harvest.py
+          python tools/rea_report.py
           git diff --exit-code -- probes/ || \
-            (echo "probe worksheet drifted from the engine" && exit 1)
+            (echo "probes/ drifted from the recorded G*Power observations" && exit 1)
+      - name: the engine reproduces every recorded G*Power reading
+        run: python -m pytest -q tests/test_gpower_observed.py
 
   # ------------------------------------------------------------------
   # The clean-room implementation is held to the same contract as the

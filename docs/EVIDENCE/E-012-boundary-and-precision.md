@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Finding** | [F-12](../../SPEC.md#f-12--boundary-behaviour-and-reported-precision) |
-| **Status** | `REA-OPEN` |
+| **Status** | `[REA] OBSERVED` — observed on G\*Power 3.1.9.6 (macOS) |
 | **Method** | Boundary sweep to locate the tightest admissible margin |
 | **Target** | G\*Power 3.1.9.x, `t tests` |
 | **Probe id** | `P-12` |
@@ -117,11 +117,23 @@ below `5e-7`. Measured worst-case deviations
 So the 401/401 exact-`N` agreement in
 [docs/VALIDATION.md](../VALIDATION.md) is not a tolerance artefact.
 
+## [REA] Observation — G\*Power 3.1.9.6
+
+Read off the GUI's *Output parameters* panel by `tools/rea_campaign.py`
+(raw records in [`probes/observations/`](../../probes/observations/)). The
+predictions were registered in `probes/probe_worksheet.csv` before any
+observation was made, and are shown unchanged.
+
+| probe | read | G\*Power printed | pre-registered engine prediction | competing prediction | verdict |
+|---|---|---|---|---|---|
+| `P-12-a` | N / Actual power | `301 / 0.8000014` | `301 / 0.8000014` | `300 (epsilon slack > 1.4e-6)` | **SUPPORTS** |
+
+Every other field G\*Power printed for these rows also matches the current
+engine — `tests/test_gpower_observed.py` checks each one.
+
 ## Verdict
 
-`REA-OPEN` for the exact tie-break, `CONFIRMED` for the practical consequence:
-the tolerance pair (exact `N`, `5e-7` power) is implemented, documented, and
-used by every checking path in the repository.
+**[REA] F-12 — observed.** `N = 301` with *Actual power* `0.8000014`: the design is accepted with a margin of `1.4e-6`, so no epsilon slack of that size or larger is applied.
 
 ## Re-run
 
