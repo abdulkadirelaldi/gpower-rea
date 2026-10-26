@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Finding** | [F-04](../../SPEC.md#f-04--point-biserial-ν--n---2-δ--r√n1-r²) |
-| **Status** | `[REA] DERIVED + OBSERVED` — observed on G\*Power 3.1.9.6 (macOS) |
+| **Status** | `[TÜRETİLMİŞ + GÖZLEM]` — observed on G\*Power 3.1.9.6 (macOS) |
 | **Method** | Cross-entry algebraic reduction |
 | **Target** | G\*Power 3.1.9.x, `t tests` |
 | **Probe id** | `P-04` |
@@ -103,7 +103,7 @@ $ gpower solve -t point-biserial -a 0.05 -p 0.8 -e 0.5 --json
   "sample_size": {"n": 26, "total": 26}
 ```
 
-## [REA] Observation — G\*Power 3.1.9.6
+## [GÖZLEM] Observation — G\*Power 3.1.9.6
 
 Read off the GUI's *Output parameters* panel by `tools/rea_campaign.py`
 (raw records in [`probes/observations/`](../../probes/observations/)). The
@@ -123,7 +123,7 @@ engine — `tests/test_gpower_observed.py` checks each one.
 
 ## Verdict
 
-**[REA] F-04 — observed.** All five rows print the `r·√(N/(1-r²))` noncentrality and the sample sizes it implies; the `√(N-2)` candidate is refuted on every row.
+**[GÖZLEM] F-04 — observed.** All five rows print the `r·√(N/(1-r²))` noncentrality and the sample sizes it implies; the `√(N-2)` candidate is refuted on every row.
 
 ## Re-run
 

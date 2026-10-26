@@ -3,12 +3,12 @@
 | | |
 |---|---|
 | **Finding** | [F-14](../../SPEC.md#f-14--gpowers-own-answers-become-inexact-below-α--1e-9-and-above-n--1e7) |
-| **Status** | `[REA] OBSERVED` — found by the conformance grid, arbitrated by a 50-digit computation |
+| **Status** | `[GÖZLEM]` — found by the conformance grid, arbitrated by a 50-digit computation |
 | **Method** | Seeded random grid (`G-*`), then exact arbitration with `mpmath` at 50 digits |
 | **Target** | G\*Power 3.1.9.6 (macOS), `t tests`, *Criterion* and *Compromise* analyses; *A priori* at very small effects |
 | **Rows** | `G-003`, `G-007`, `G-014`, `G-049`, `G-091`, `G-115`, `G-168`, `G-187`, `G-205`, `G-230`; `D-31`, `D-43`, `D-44` |
 
-## [REA] Claim
+## [GÖZLEM] Claim
 
 When the answer `α` of a criterion or compromise analysis is below roughly
 `1e-9`, G\*Power 3.1.9.6 prints an `α` and a critical *t* that are not the exact
@@ -23,7 +23,7 @@ Not by looking for it. The 240-row seeded grid
 engine. Every disagreement it produced had the same shape: a criterion or
 compromise analysis whose answer `α` was tiny.
 
-## [REA] Observation and arbitration
+## [GÖZLEM] Observation and arbitration
 
 | row | input | G\*Power printed | engine | exact (`mpmath`, 50 digits) |
 |---|---|---|---|---|
@@ -73,7 +73,7 @@ a disagreement **only** in this region, and fails on any other.
 
 ## Verdict
 
-**[REA] F-14 — observed.** A documented, bounded region where the reference
+**[GÖZLEM] F-14 — observed.** A documented, bounded region where the reference
 program itself is inexact; outside it, agreement is exact.
 
 ## Re-run

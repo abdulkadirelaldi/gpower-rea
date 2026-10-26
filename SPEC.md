@@ -5,7 +5,7 @@
 `GPowerMac_3.1.9.6.zip`, SHA-256 `841390e0…b3964`), test family **`t tests`**
 (all six statistical tests in that menu)
 **Status:** v1.2 is the first version written **from observations**. Every
-finding below is labelled **`[REA]`** and cites the G\*Power readings that
+finding below is labelled **`[GÖZLEM]`** and cites the G\*Power readings that
 settle it: **373 GUI runs** recorded by `tools/rea_campaign.py`
 ([`probes/observations/`](probes/observations/)), re-scored against the
 engine by `tools/rea_report.py` ([`probes/REA-OBSERVED.md`](probes/REA-OBSERVED.md)).
@@ -34,18 +34,22 @@ precisely enough to implement, and links to an **evidence file**
 (`docs/EVIDENCE/E-nnn-*.md`) that records how it was established and how to
 re-establish it.
 
-Every finding carries the label **`[REA]`** — reverse-engineered behaviour,
-claimed with evidence — and one of these statuses:
+Evidence labels follow the course's ledger taxonomy
+([LEDGER.md](LEDGER.md)), plus one label for the kind of evidence this
+project actually has:
 
-| Status | Meaning |
+| Label | Meaning |
 |---|---|
-| `[REA] OBSERVED` | Settled by recorded G\*Power 3.1.9.6 output. The evidence file names the probe rows; the raw readings are in `probes/observations/`, and `tests/test_gpower_observed.py` fails if the engine stops reproducing them. |
-| `[REA] DERIVED + OBSERVED` | Forced by internal consistency (two menu entries must agree numerically, which pins the formula) **and** confirmed by observation. |
-| `[REA] REFUTED → CORRECTED` | v1.1 stated a rule; G\*Power was observed to do something else; the finding now states the observed rule and keeps the refuted one for the record. |
-| `[SPEC-CLOSURE]` | Not a claim about G\*Power at all: a point where *this document* was too weak to determine an implementation. Only F-13. |
+| `[DOK]` | stated in the G\*Power manual or the papers (Faul et al. 2007, 2009) — §1 only, no credit claimed |
+| `[REA]` | proven from the binary (function address or string reference). **This repository contains no `[REA]` row**: no static analysis of the executable was performed in this work |
+| `[GÖZLEM]` | proven by a recorded G\*Power 3.1.9.6 GUI reading (black box): the evidence file names the probe rows, the raw readings are in `probes/observations/` and `oracle/`, and `tests/test_gpower_observed.py` fails if the engine stops reproducing them |
+| `[TÜRETİLMİŞ + GÖZLEM]` | forced by internal consistency (two menu entries must agree numerically) **and** confirmed by a reading |
+| `[GÖZLEM: ÇÜRÜTÜLDÜ → DÜZELTİLDİ]` | an earlier version stated a rule; G\*Power was observed to do something else; the finding states the observed rule and keeps the refuted one |
+| `[AJAN]` | the agent's inference, no evidence — used only in [HALLUCINATIONS.md](HALLUCINATIONS.md) and LEDGER.md, never as a finding |
+| `[SPEC-CLOSURE]` | not a claim about G\*Power: a point where this document was too weak to determine an implementation (F-13, F-16) |
 
-> **Why "not in the manual" matters.** Everything in §2 that carries a status
-> carrying `[REA]` describes behaviour the G\*Power documentation
+> **Why "not in the manual" matters.** Everything in §2 labelled
+> `[GÖZLEM]` describes behaviour the G\*Power documentation
 > either omits or states ambiguously. Section 1 (the parts the manual *does*
 > state) is included only because a clean-room implementer needs it; it earns
 > no credit and is labelled as such.
@@ -77,7 +81,7 @@ or the effect-size pooling variants.
 ## 2. Findings
 
 ### F-01 — One model for the whole family
-`[REA] DERIVED + OBSERVED` · evidence [E-001](docs/EVIDENCE/E-001-common-noncentral-t-model.md) · probe `P-01-a` + 373 runs
+`[TÜRETİLMİŞ + GÖZLEM]` · evidence [E-001](docs/EVIDENCE/E-001-common-noncentral-t-model.md) · probe `P-01-a` + 373 runs
 
 Every test in the family is fully determined by a pair
 
@@ -98,7 +102,7 @@ Consequences an implementer must honour:
    derivation leverage used by E-003, E-004 and E-007.
 
 ### F-02 — Two-sided power retains the far-tail term
-`[REA] OBSERVED` · evidence [E-002](docs/EVIDENCE/E-002-two-sided-far-tail.md) · probes `P-02-a…d`
+`[GÖZLEM]` · evidence [E-002](docs/EVIDENCE/E-002-two-sided-far-tail.md) · probes `P-02-a…d`
 
 ```
 k = 1 :   1-β  =  1 - T(t_{1-α, ν};   ν, δ)
@@ -124,7 +128,7 @@ correct on textbook examples — and then disagree on small effects, on
 `criterion` analyses with large `α`, and on `compromise` analyses.
 
 ### F-03 — One-sample and matched-pairs: `ν = N - 1`, `δ = ES·√N`
-`[REA] DERIVED + OBSERVED` · evidence [E-003](docs/EVIDENCE/E-003-paired-and-one-sample.md) · probes `P-03-a,b`
+`[TÜRETİLMİŞ + GÖZLEM]` · evidence [E-003](docs/EVIDENCE/E-003-paired-and-one-sample.md) · probes `P-03-a,b`
 
 For *Means: Difference from constant (one sample case)* with effect size `d`,
 and for *Means: Difference between two dependent means (matched pairs)* with
@@ -144,7 +148,7 @@ inputs, which they could not do if one of them counted observations.
 Minimum admissible design: `N ≥ 2`.
 
 ### F-04 — Point biserial: `ν = N - 2`, `δ = r·√(N/(1-r²))`
-`[REA] DERIVED + OBSERVED` · evidence [E-004](docs/EVIDENCE/E-004-point-biserial-ncp.md) · probes `P-04-a…e`
+`[TÜRETİLMİŞ + GÖZLEM]` · evidence [E-004](docs/EVIDENCE/E-004-point-biserial-ncp.md) · probes `P-04-a…e`
 
 For *Correlation: Point biserial model* with `0 < |r| < 1`:
 
@@ -167,7 +171,7 @@ The derivation leverage: a balanced dichotomy maps `r` to a two-group `d` via
 Minimum admissible design: `N ≥ 3`.
 
 ### F-05 — Balanced a-priori search runs over *n per group*, not total *N*
-`[REA] OBSERVED` · evidence [E-005](docs/EVIDENCE/E-005-balanced-search-grid.md) · probes `P-05-a…d`, sweep `S-*`
+`[GÖZLEM]` · evidence [E-005](docs/EVIDENCE/E-005-balanced-search-grid.md) · probes `P-05-a…d`, sweep `S-*`
 
 For *Means: Difference between two independent means (two groups)*:
 
@@ -202,7 +206,7 @@ and by every `P-05-*` row in `tests/test_gpower_observed.py`.
 Minimum admissible design: `n₁ ≥ 2` and `n₂ ≥ 2`.
 
 ### F-06 — Minimality, and "Actual power" is recomputed
-`[REA] OBSERVED`, one clause `REFUTED → CORRECTED` · evidence [E-006](docs/EVIDENCE/E-006-minimality-and-actual-power.md) · probes `P-06-a,b`, `S-019`
+`[GÖZLEM]`, one clause `REFUTED → CORRECTED` · evidence [E-006](docs/EVIDENCE/E-006-minimality-and-actual-power.md) · probes `P-06-a,b`, `S-019`
 
 An a-priori analysis returns the **first** design on the search grid of
 F-05/F-09 whose stopping test passes — the comparison is `≥`, not `>`.
@@ -232,7 +236,7 @@ two independent means, d = 0.5, α = 0.05, power = 0.95, two tails, ratio = 1
 ```
 
 ### F-07 — Regression coefficient: `ν = N - p - 1`, `δ = √(f²·N)`
-`[REA] DERIVED + OBSERVED` · evidence [E-007](docs/EVIDENCE/E-007-regression-coefficient.md) · probes `P-07-a…d`
+`[TÜRETİLMİŞ + GÖZLEM]` · evidence [E-007](docs/EVIDENCE/E-007-regression-coefficient.md) · probes `P-07-a…d`
 
 For *Linear multiple regression: Fixed model, single regression coefficient*
 with effect size `f²` and `p` = **total** number of predictors in the model:
@@ -251,7 +255,7 @@ in the noncentrality. Derivation leverage: at `p = 1` and
 Minimum admissible design: `N ≥ p + 2`.
 
 ### F-08 — A negative effect size is a direction, not an error
-`[REA] REFUTED → CORRECTED` · evidence [E-008](docs/EVIDENCE/E-008-effect-size-sign.md) · probes `P-08-a…c`, `N-01…N-12`
+`[GÖZLEM: ÇÜRÜTÜLDÜ → DÜZELTİLDİ]` · evidence [E-008](docs/EVIDENCE/E-008-effect-size-sign.md) · probes `P-08-a…c`, `N-01…N-12`
 
 **Observed rule.** The sign of the effect size is the *direction* of the
 alternative. G\*Power computes every probability from `|δ|`, and prints `δ`
@@ -282,7 +286,7 @@ quantity and is likewise never negative (F-13 item 2).
 The engine records `warnings[]` whenever a negative effect size was supplied.
 
 ### F-09 — Allocation-ratio rounding
-`[REA] REFUTED → CORRECTED` · evidence [E-009](docs/EVIDENCE/E-009-allocation-rounding.md) · probes `P-09-a…d`, `A-000…A-047`, `S-000…S-040`
+`[GÖZLEM: ÇÜRÜTÜLDÜ → DÜZELTİLDİ]` · evidence [E-009](docs/EVIDENCE/E-009-allocation-rounding.md) · probes `P-09-a…d`, `A-000…A-047`, `S-000…S-040`
 
 With allocation ratio `R = N₂/N₁`, the a-priori search is:
 
@@ -328,7 +332,7 @@ The refuted rules remain available as `--allocation-rule n1-grid` and
 `--allocation-rule total-grid`, for reproducing v1.1 output only.
 
 ### F-10 — Compromise analysis is defined on the critical value
-`[REA] DERIVED + OBSERVED` · evidence [E-010](docs/EVIDENCE/E-010-compromise-analysis.md) · probes `P-10-a…c`, `N-03,04`
+`[TÜRETİLMİŞ + GÖZLEM]` · evidence [E-010](docs/EVIDENCE/E-010-compromise-analysis.md) · probes `P-10-a…c`, `N-03,04`
 
 A compromise analysis fixes the design and the effect size, accepts a desired
 error ratio `q = β/α`, and solves for the **critical value** `c`:
@@ -347,7 +351,7 @@ is therefore one of the places where dropping that term changes the answer
 visibly.
 
 ### F-11 — The effect-size drawer offers *two* pooled SDs, and the equal-*n* one is an RMS
-`[REA] OPEN` · evidence [E-011](docs/EVIDENCE/E-011-effect-size-pooling.md) · probes `P-11-a…c`
+`[AÇIK]` · evidence [E-011](docs/EVIDENCE/E-011-effect-size-pooling.md) · probes `P-11-a…c`
 
 For two independent means the effect-size calculator exposes two options:
 
@@ -366,7 +370,7 @@ will silently disagree with half of all users.
 Pinned by `tests/test_effectsize.py::test_equal_n_option_uses_rms_not_pooled`.
 
 ### F-12 — Boundary behaviour and reported precision
-`[REA] OBSERVED` · evidence [E-012](docs/EVIDENCE/E-012-boundary-and-precision.md) · probe `P-12-a`
+`[GÖZLEM]` · evidence [E-012](docs/EVIDENCE/E-012-boundary-and-precision.md) · probe `P-12-a`
 
 * The a-priori acceptance test is `power ≥ target` evaluated in double
   precision with no epsilon slack. A design whose power equals the target to
@@ -422,7 +426,7 @@ becomes inexact (F-14); item 8 and the point-biserial domain are settled by
 F-15. Items 2 and 7 follow from F-02 and F-05 and are not free choices.
 
 ### F-14 — G\*Power's own answers become inexact below `α ≈ 1e-9` and above `N ≈ 1e7`
-`[REA] OBSERVED` · evidence [E-014](docs/EVIDENCE/E-014-far-tail-precision.md) · grid rows `G-003`, `G-007`, `G-014`, `G-168`, `G-187`, `G-205`, `G-230`
+`[GÖZLEM]` · evidence [E-014](docs/EVIDENCE/E-014-far-tail-precision.md) · grid rows `G-003`, `G-007`, `G-014`, `G-168`, `G-187`, `G-205`, `G-230`
 
 In the criterion and compromise analyses the answer `α` can be astronomically
 small (F-13 item 5). There G\*Power 3.1.9.6 stops being exact:
@@ -456,7 +460,7 @@ criterion or compromise result has `α < 1e-9`, or an a-priori result has
 observed answer is reproduced in every printed digit.
 
 ### F-15 — The input domain G\*Power accepts
-`[REA] OBSERVED` · evidence [E-015](docs/EVIDENCE/E-015-input-domain.md) · probes `D-01…D-46`, `N-07`
+`[GÖZLEM]` · evidence [E-015](docs/EVIDENCE/E-015-input-domain.md) · probes `D-01…D-46`, `N-07`
 
 The manual gives no admissible ranges. G\*Power 3.1.9.6 enforces these, each
 with an *"Input error!"* dialog quoted in E-015:
@@ -482,7 +486,7 @@ then refuses, and the `f²` range admits values the computation cannot handle.
 names the rule; accept everything it accepts.
 
 ### F-16 — Points SPEC v1.2 left undetermined, closed by observation where possible
-`[SPEC-CLOSURE]`, twelve rows `[REA] OBSERVED` · evidence [E-016](docs/EVIDENCE/E-016-cleanroom-v12-gaps.md) · probes `X-G2-*`, `D-*`
+`[SPEC-CLOSURE]`, twelve rows `[GÖZLEM]` · evidence [E-016](docs/EVIDENCE/E-016-cleanroom-v12-gaps.md) · probes `X-G2-*`, `D-*`
 
 The second clean-room session implemented v1.2 from this document alone and
 reported 19 gaps ([cleanroom/SPEC-GAPS-v1.2.md](cleanroom/SPEC-GAPS-v1.2.md)).
@@ -669,3 +673,98 @@ regions of F-14 (`tests/test_gpower_observed.py`).
 `gpower selftest` performs exactly this check and exits non-zero on any
 disagreement. `gpower batch --expect <column> --min-match <fraction>` performs
 it against an arbitrary external vector file — including hidden ones.
+
+---
+
+## 6. Acceptance criteria (Gherkin) — `t2-indep`
+
+Executable: `tests/test_gherkin_spec.py` parses every `Examples:` table below
+and runs it through `gpower-clone`. Every expected value is a G\*Power 3.1.9.6
+reading from [`oracle/gpower_t2_indep.csv`](oracle/gpower_t2_indep.csv), not an
+engine output. Integers must match exactly; `actual_power`, `critical` and
+`ncp` to the 4 decimals of the CLI contract.
+
+```gherkin
+Feature: t2-indep sample size and power, as G*Power 3.1.9.6 computes them
+
+  Background:
+    Given the command "gpower-clone --test t2-indep"
+    And every answer is one line of JSON on stdout
+
+  # F-05, F-06, F-09: even totals, unrounded stopping test, rounded split
+  Scenario Outline: a priori sample size
+    When I run "--mode a-priori --tails <tails> --d <d> --alpha <alpha> --power <power> --ratio <ratio>"
+    Then the exit code is 0
+    And "n1" is <n1> and "n2" is <n2> and "n_total" is <n_total> exactly
+    And "actual_power" is <actual_power> and "critical" is <critical> and "df" is <df> and "ncp" is <ncp>
+
+    Examples:
+      | id | tails | d | alpha | power | ratio | n1 | n2 | n_total | actual_power | critical | df | ncp |
+      | P-01-a | 2 | 0.5 | 0.05 | 0.95 | 1 | 105 | 105 | 210 | 0.9501 | 1.9714 | 208 | 3.6228 |
+      | P-05-a | 2 | 0.3 | 0.05 | 0.8 | 1 | 176 | 176 | 352 | 0.8014 | 1.9668 | 350 | 2.8142 |
+      | P-05-b | 2 | 0.42 | 0.05 | 0.9 | 1 | 121 | 121 | 242 | 0.9021 | 1.9699 | 240 | 3.2668 |
+      | P-05-d | 2 | 0.62 | 0.05 | 0.85 | 1 | 48 | 48 | 96 | 0.8523 | 1.9855 | 94 | 3.0374 |
+      | P-09-a | 2 | 0.5 | 0.05 | 0.95 | 0.5 | 157 | 79 | 236 | 0.9505 | 1.9702 | 234 | 3.6247 |
+      | P-09-b | 2 | 0.5 | 0.05 | 0.95 | 1.5 | 88 | 132 | 220 | 0.9513 | 1.9709 | 218 | 3.6332 |
+      | P-09-c | 2 | 0.5 | 0.05 | 0.95 | 2.0 | 79 | 157 | 236 | 0.9505 | 1.9702 | 234 | 3.6247 |
+      | P-09-d | 2 | 0.5 | 0.05 | 0.95 | 3.0 | 70 | 210 | 280 | 0.9506 | 1.9685 | 278 | 3.6228 |
+      | A-002 | 2 | 0.3 | 0.05 | 0.8 | 1.25 | 158 | 198 | 356 | 0.8009 | 1.9667 | 354 | 2.8123 |
+      | A-007 | 2 | 0.3 | 0.05 | 0.8 | 4 | 110 | 438 | 548 | 0.8018 | 1.9643 | 546 | 2.8130 |
+      | A-022 | 2 | 0.5 | 0.05 | 0.8 | 3 | 43 | 127 | 170 | 0.8045 | 1.9742 | 168 | 2.8339 |
+      | A-033 | 2 | 0.8 | 0.05 | 0.8 | 0.5 | 39 | 19 | 58 | 0.8024 | 2.0032 | 56 | 2.8595 |
+      | S-019 | 2 | 0.5 | 0.05 | 0.9495 | 1.5 | 87 | 131 | 218 | 0.9494 | 1.9710 | 216 | 3.6152 |
+      | N-10 | 1 | -0.5 | 0.05 | 0.8 | 2 | 38 | 76 | 114 | 0.8041 | -1.6586 | 112 | -2.5166 |
+      | D-14 | 2 | 0.8 | 0.05 | 0.8 | 0.05 | 261 | 13 | 274 | 0.8010 | 1.9687 | 272 | 2.8152 |
+      | D-15 | 2 | 0.8 | 0.05 | 0.8 | 20 | 13 | 261 | 274 | 0.8010 | 1.9687 | 272 | 2.8152 |
+      | D-22 | 1 | 0.5 | 0.05 | 0.8 | 1.5 | 42 | 64 | 106 | 0.8042 | 1.6596 | 104 | 2.5179 |
+      | D-27 | 2 | 20 | 0.05 | 0.8 | 1 | 2 | 2 | 4 | 1.0000 | 4.3027 | 2 | 20.0000 |
+      | D-28 | 2 | 20 | 0.05 | 0.8 | 3 | 1 | 3 | 4 | 1.0000 | 4.3027 | 2 | 17.3205 |
+      | X-G2-04 | 2 | 8 | 0.05 | 0.8 | 3 | 1 | 3 | 4 | 0.9085 | 4.3027 | 2 | 6.9282 |
+      | X-G2-14 | 2 | 1.11 | 0.05 | 0.8 | 7.8 | 7 | 59 | 66 | 0.7808 | 1.9977 | 64 | 2.7767 |
+      | X-G3-01a | 2 | 20 | 0.05 | 0.8 | 100 | 0 | 6 | 6 | 0.0500 | 2.7764 | 4 | 0.0000 |
+      | X-G3-01b | 2 | 20 | 0.05 | 0.8 | 0.01 | 6 | 0 | 6 | 0.0500 | 2.7764 | 4 | 0.0000 |
+
+  # F-02 (far tail kept), F-08 (sign is a direction)
+  Scenario Outline: post hoc power
+    When I run "--mode post-hoc --tails <tails> --d <d> --alpha <alpha> --n1 <n1> --n2 <n2>"
+    Then the exit code is 0
+    And "actual_power" is <actual_power> and "critical" is <critical> and "df" is <df> and "ncp" is <ncp>
+
+    Examples:
+      | id | tails | d | alpha | n1 | n2 | actual_power | critical | df | ncp |
+      | D-06 | 2 | 0 | 0.05 | 20 | 20 | 0.0500 | 2.0244 | 38 | 0.0000 |
+      | D-24 | 2 | 0.5 | 0.05 | 1 | 2 | 0.0541 | 12.7062 | 1 | 0.4082 |
+      | G-108 | 1 | 0.41 | 0.05 | 103 | 13 | 0.3974 | 1.6583 | 114 | 1.3930 |
+      | G-144 | 1 | 0.21 | 0.025 | 12 | 16 | 0.0763 | 2.0555 | 26 | 0.5499 |
+      | G-150 | 2 | 0.2 | 0.05 | 114 | 45 | 0.2040 | 1.9752 | 157 | 1.1360 |
+      | G-180 | 1 | 0.49 | 0.025 | 98 | 124 | 0.9505 | 1.9708 | 220 | 3.6253 |
+      | G-192 | 1 | 0.58 | 0.1 | 25 | 25 | 0.7738 | 1.2994 | 48 | 2.0506 |
+      | G-204 | 2 | 0.22 | 0.1 | 26 | 96 | 0.2603 | 1.6577 | 120 | 0.9951 |
+
+  # F-15, F-16: refuse exactly what G*Power refuses
+  Scenario Outline: invalid input
+    When I run "<args>"
+    Then the exit code is not 0
+    And the output is {"error": "<some text>"}
+
+    Examples:
+      | case | args |
+      | ratio below 0.01 (X-G2-11a) | --mode a-priori --tails 2 --d 0.5 --alpha 0.05 --power 0.8 --ratio 0.001 |
+      | ratio above 100 (X-G2-11b) | --mode a-priori --tails 2 --d 0.5 --alpha 0.05 --power 0.8 --ratio 1000 |
+      | power below alpha (D-13) | --mode a-priori --tails 2 --d 0.5 --alpha 0.05 --power 0.04 --ratio 1 |
+      | effect below 1e-5 a priori (D-40) | --mode a-priori --tails 2 --d 0.000009 --alpha 0.05 --power 0.8 --ratio 1 |
+      | empty group post hoc (X-G2-02) | --mode post-hoc --tails 2 --d 0.5 --alpha 0.05 --n1 0 --n2 3 |
+      | total below 3 post hoc (D-17) | --mode post-hoc --tails 2 --d 0.5 --alpha 0.05 --n1 1 --n2 1 |
+      | tails not 1 or 2 | --mode a-priori --tails 3 --d 0.5 --alpha 0.05 --power 0.8 --ratio 1 |
+      | unknown mode | --mode sideways --tails 2 --d 0.5 --alpha 0.05 --power 0.8 |
+
+  # F-06: the reported design is never "repaired"
+  Scenario: actual power may be below the requested power
+    When I run "--mode a-priori --tails 2 --d 0.5 --alpha 0.05 --power 0.9495 --ratio 1.5"
+    Then "n1" is 87 and "n2" is 131
+    And "actual_power" is 0.9494 which is below 0.9495
+
+  Scenario: a priori may report an empty group, like G*Power (X-G3-01a)
+    When I run "--mode a-priori --tails 2 --d 20 --alpha 0.05 --power 0.8 --ratio 100"
+    Then "n1" is 0 and "n2" is 6 and "actual_power" is 0.05
+```

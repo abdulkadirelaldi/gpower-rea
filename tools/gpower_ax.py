@@ -1,6 +1,6 @@
 """Drive the G*Power GUI through the macOS Accessibility API — black-box only.
 
-This is the instrument behind every ``[REA]`` observation in the repository.
+This is the instrument behind every ``[GÖZLEM]`` observation in the repository.
 It does what an operator does with a mouse: pick a test and an analysis from
 the pop-up menus, type numbers into the visible input fields, press
 *Calculate*, and read the numbers printed in the *Output parameters* panel.

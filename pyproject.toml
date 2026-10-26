@@ -41,6 +41,7 @@ dev = [
 [project.scripts]
 gpower = "gpower_rea.cli:main"
 gpower-mcp = "gpower_rea.mcp_server:main"
+gpower-clone = "gpower_rea.clone_cli:main"
 
 [tool.setuptools]
 package-dir = { "" = "src" }

@@ -1,0 +1,97 @@
+{
+ "id": "Q07",
+ "question": "Aynı hastaların tansiyonunu tedaviden önce ve sonra ölçeceğim. Farkların etki büyüklüğü dz=0.5, alfa 0.05, iki yönlü, güç 0.95. Kaç hasta gerekir?",
+ "tool_calls": [
+  {
+   "tool": "power_analysis",
+   "input": {
+    "test": "ttest-paired-means",
+    "solve_for": "n",
+    "effect_size": 0.5,
+    "alpha": 0.05,
+    "power": 0.95,
+    "tails": 2
+   },
+   "output": {
+    "ok": true,
+    "result": {
+     "schema": "gpower-rea/result/1",
+     "test": "ttest-paired-means",
+     "test_title": "Means: Difference between two dependent means (matched pairs)",
+     "family": "t tests",
+     "solve_for": "n",
+     "tails": 2,
+     "alpha": 0.05,
+     "power": 0.9502120365387478,
+     "df": 53.0,
+     "noncentrality": 3.6742346141747673,
+     "critical_t": 2.005745995317872,
+     "effect_size": {
+      "name": "dz",
+      "value": 0.5
+     },
+     "sample_size": {
+      "n": 54,
+      "total": 54
+     },
+     "target": {
+      "power": 0.95
+     },
+     "engine": {
+      "name": "gpower-rea",
+      "version": "1.3.0",
+      "spec": "SPEC.md v1.3"
+     },
+     "warnings": []
+    },
+    "report_text": "t tests - Means: Difference between two dependent means (matched pairs)\n\nAnalysis:          A priori: Compute required sample size\nInput Parameters\n  Tail(s)                        = 2\n  Effect size dz                 = 0.5\n  alpha err prob                 = 0.05\n  Power (1-beta err prob)        = 0.95\nOutput Parameters\n  Noncentrality parameter delta  = 3.6742346\n  Critical t                     = 2.005746\n  Df                             = 53\n  Total sample size              = 54\n  Actual power                   = 0.950212\n\n[engine gpower-rea 1.3.0, SPEC.md v1.3]",
+    "apa_sentence": "An a priori power analysis for a two-tailed means: difference between two dependent means (matched pairs) (dz = 0.5, alpha = 0.05, target power = 0.95) indicated that N = 54 is required; the achieved power at that sample size is 0.9502."
+   }
+  }
+ ],
+ "final_answer": "**54 hasta gerekiyor.** Aynı hastalar iki kez ölçüldüğü için tek grup var, yani toplam örneklem de 54. Bu sayıyla ulaşılan güç **0,9502**, hedeflenen 0,95'in biraz üzerinde.\n\n**Tasarım:** Aynı hastalar tedaviden önce ve sonra ölçüleceği için eşleştirilmiş örneklem t-testi kullandım (*ttest-paired-means*, etki büyüklüğü dz).\n\n**Hesap ayrıntıları:**\n- Serbestlik derecesi: 53\n- Kritik t: 2,0057\n- Merkezi olmama parametresi δ: 3,6742\n\n**Varsayımlar:** Tüm değerler sizden geldi (dz = 0,5, α = 0,05, iki yönlü, güç = 0,95), hiçbirini varsayılan olarak ben seçmedim. dz, fark puanlarının ortalamasının fark puanlarının standart sapmasına bölünmesiyle elde edilir. Bu değeri önceki ölçüm ve sonraki ölçümün ayrı ayrı SD'lerinden hesapladıysanız ve iki ölçüm arasındaki korelasyonu hesaba katmadıysanız, gereken sayı değişebilir. Ortalamaları, SD'leri ve korelasyonu (r) verirseniz dz'yi doğrudan hesaplayabilirim. Ayrıca çalışmadan ayrılan hastaları karşılamak için 54'ün üzerine pay eklemeniz gerekebilir.\n\n**Yöntem bölümü için cümle:**\n> An a priori power analysis for a two-tailed means: difference between two dependent means (matched pairs) (dz = 0.5, alpha = 0.05, target power = 0.95) indicated that N = 54 is required; the achieved power at that sample size is 0.9502.\n\nTürkçe metin için: *\"İki yönlü eşleştirilmiş örneklem t-testi için yapılan a priori güç analizi (dz = 0,5, α = 0,05, hedef güç = 0,95), N = 54 katılımcı gerektiğini göstermiştir; bu örneklem büyüklüğünde ulaşılan güç 0,9502'dir.\"*",
+ "wall_seconds": 13.2,
+ "usage": {
+  "input_tokens": 6,
+  "cache_creation_input_tokens": 12949,
+  "cache_read_input_tokens": 57061,
+  "output_tokens": 1067,
+  "output_tokens_details": {
+   "thinking_tokens": 0
+  },
+  "server_tool_use": {
+   "web_search_requests": 0,
+   "web_fetch_requests": 0
+  },
+  "service_tier": "standard",
+  "cache_creation": {
+   "ephemeral_1h_input_tokens": 12949,
+   "ephemeral_5m_input_tokens": 0
+  },
+  "inference_geo": "global",
+  "iterations": [
+   {
+    "input_tokens": 2,
+    "output_tokens": 796,
+    "cache_read_input_tokens": 23418,
+    "cache_creation_input_tokens": 873,
+    "cache_creation": {
+     "ephemeral_5m_input_tokens": 0,
+     "ephemeral_1h_input_tokens": 873
+    },
+    "type": "message"
+   }
+  ],
+  "speed": "standard",
+  "fallback_credit": null
+ },
+ "cost_usd": 0.1363682,
+ "num_turns": 3,
+ "model": "claude-opus-5-5",
+ "exit_code": 0,
+ "score": {
+  "family": true,
+  "params": true,
+  "answer": true
+ }
+}

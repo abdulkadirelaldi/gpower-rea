@@ -13,7 +13,7 @@ clean-room implementation) are present.
 
 ```console
 $ python -m pytest -q
-1330 passed in 38.49s
+1541 passed in 40.45s
 ```
 
 ---

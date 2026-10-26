@@ -3,12 +3,12 @@
 | | |
 |---|---|
 | **Finding** | [F-15](../../SPEC.md#f-15--the-input-domain-gpower-accepts) |
-| **Status** | `[REA] OBSERVED` |
+| **Status** | `[GÖZLEM]` |
 | **Method** | Boundary probing: values on, just inside and just outside each plausible edge |
 | **Target** | G\*Power 3.1.9.6 (macOS), `t tests`, all six entries |
 | **Probe ids** | `D-01…D-46` (`tools/rea_campaign.py --set domain`), `N-07` |
 
-## [REA] Claim
+## [GÖZLEM] Claim
 
 G\*Power validates its inputs against ranges the manual never states, and
 refuses everything outside them with an *"Input error!"* dialog. SPEC F-15
@@ -30,7 +30,7 @@ conformance row. Before these probes the engine did both: it answered for
 `d = 1e-5` (its search stopped at `N = 1e7`; G\*Power's answer is
 `N = 7.8e10`).
 
-## [REA] Observation — every boundary probe
+## [GÖZLEM] Observation — every boundary probe
 
 The message text is G\*Power's, verbatim. *Engine* compares the current
 engine against that reading (`tools/rea_report.py`).
@@ -95,7 +95,7 @@ names the rule and cites F-15.
 
 ## Verdict
 
-**[REA] F-15 — observed.** Every boundary probe is either identical or refused
+**[GÖZLEM] F-15 — observed.** Every boundary probe is either identical or refused
 by both, except the three huge-`N` rows, which belong to F-14.
 
 ## Re-run

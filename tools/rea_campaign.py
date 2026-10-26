@@ -10,7 +10,7 @@ black-box, Accessibility API) and once through ``gpower_rea.engine.solve``.
 Every printed output field is compared at the GUI's own printed precision.
 One JSON object per case is appended to
 ``probes/observations/gpower-<version>-<platform>.jsonl``; that file is the
-raw ``[REA]`` evidence and is never edited by hand.
+raw ``[GÖZLEM]`` evidence and is never edited by hand.
 
 The file holds only numbers read off the GUI's output panel — no binary,
 no code, no screenshots of protected material.
@@ -318,6 +318,32 @@ def gap_cases() -> list[dict]:
     return [{"id": f"X-{gid}", "tails": 2, **c} for gid, c in X]
 
 
+def agent_eval_cases() -> list[dict]:
+    """The numeric questions of agent/eval/questions.json, so their expected
+    answers are G*Power's, not the engine's."""
+    import json as _json
+    qs = _json.loads((ROOT / "agent" / "eval" / "questions.json").read_text(encoding="utf-8"))
+    C = []
+    for q in qs:
+        p = q["expected_parameters"]
+        if q["expected_family"] == "t2-indep":
+            c = {"test": "indep", "es": p["d"], "alpha": p["alpha"], "tails": p["tails"]}
+            if "power" in p:
+                c.update(analysis="a priori", power=p["power"], ratio=p["ratio"])
+            else:
+                c.update(analysis="post hoc", n1=p["n1"], n2=p["n2"])
+        elif q["expected_family"] == "t-paired":
+            c = {"test": "paired", "es": p["dz"], "alpha": p["alpha"], "tails": p["tails"]}
+            if "power" in p:
+                c.update(analysis="a priori", power=p["power"])
+            else:
+                c.update(analysis="post hoc", n=p["n"])
+        else:
+            continue
+        C.append({"id": f"E-{q['id']}", **c})
+    return C
+
+
 def grid_cases(n: int = 240, seed: int = 20261026) -> list[dict]:
     """A seeded random conformance grid, weighted towards a priori (N)."""
     rnd = random.Random(seed)
@@ -419,7 +445,7 @@ def run_case(c: dict) -> dict:
 
 def main(argv=None) -> int:
     ap = argparse.ArgumentParser()
-    ap.add_argument("--set", choices=["none", "probes", "alloc", "sweep", "sign", "domain", "gaps", "grid", "all"], default="all")
+    ap.add_argument("--set", choices=["none", "probes", "alloc", "sweep", "sign", "domain", "gaps", "eval", "grid", "all"], default="all")
     ap.add_argument("--grid-size", type=int, default=240)
     ap.add_argument("--only", nargs="*", help="case ids to (re)run")
     ap.add_argument("--cases", type=Path, help="JSON list of extra cases")
@@ -440,6 +466,8 @@ def main(argv=None) -> int:
         cases += domain_cases()
     if a.set in ("gaps", "all"):
         cases += gap_cases()
+    if a.set in ("eval", "all"):
+        cases += agent_eval_cases()
     if a.set in ("grid", "all"):
         cases += grid_cases(a.grid_size)
     if a.cases:

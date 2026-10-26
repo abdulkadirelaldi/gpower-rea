@@ -1,0 +1,164 @@
+[
+ {
+  "id": "Q01",
+  "question": "Yeni bir antihipertansif ilacı plaseboyla karşılaştıracağım. İki bağımsız grup olacak, etki büyüklüğü d=0.5 bekliyorum. Alfa 0.05, çift yönlü, güç %80. Her gruba kaç hasta almalıyım?",
+  "expected_family": "t2-indep",
+  "expected_parameters": {
+   "d": 0.5,
+   "alpha": 0.05,
+   "power": 0.8,
+   "tails": 2,
+   "ratio": 1
+  },
+  "expected": {
+   "n1": 64,
+   "n2": 64,
+   "n_total": 128,
+   "power": 0.8015
+  },
+  "expected_behaviour": "call the tool; report its numbers"
+ },
+ {
+  "id": "Q02",
+  "question": "Randomize kontrollü bir çalışmada tedavi ve kontrol kolları eşit olacak. Orta düzey bir etki (Cohen d = 0.5) için %95 güç ve 0.05 anlamlılık düzeyiyle toplam kaç katılımcı gerekir?",
+  "expected_family": "t2-indep",
+  "expected_parameters": {
+   "d": 0.5,
+   "alpha": 0.05,
+   "power": 0.95,
+   "tails": 2,
+   "ratio": 1
+  },
+  "expected": {
+   "n1": 105,
+   "n2": 105,
+   "n_total": 210,
+   "power": 0.9501
+  },
+  "expected_behaviour": "call the tool; report its numbers"
+ },
+ {
+  "id": "Q03",
+  "question": "Kontrol grubunu tedavi grubunun iki katı büyüklükte tutmak istiyorum. d=0.4, alfa 0.05 iki yönlü, güç 0.90. Grup büyüklükleri ne olmalı?",
+  "expected_family": "t2-indep",
+  "expected_parameters": {
+   "d": 0.4,
+   "alpha": 0.05,
+   "power": 0.9,
+   "tails": 2,
+   "ratio": 2
+  },
+  "expected": {
+   "n1": 99,
+   "n2": 199,
+   "n_total": 298,
+   "power": 0.9
+  },
+  "expected_behaviour": "call the tool; report its numbers"
+ },
+ {
+  "id": "Q04",
+  "question": "İlacın yalnızca kan basıncını düşüreceğini varsayıyoruz, yani tek yönlü test yapacağız. İki bağımsız grup, d=0.3, alfa 0.05, güç 0.80. Toplam örneklem kaç olmalı?",
+  "expected_family": "t2-indep",
+  "expected_parameters": {
+   "d": 0.3,
+   "alpha": 0.05,
+   "power": 0.8,
+   "tails": 1,
+   "ratio": 1
+  },
+  "expected": {
+   "n1": 139,
+   "n2": 139,
+   "n_total": 278,
+   "power": 0.8023
+  },
+  "expected_behaviour": "call the tool; report its numbers"
+ },
+ {
+  "id": "Q05",
+  "question": "Elimde her iki kolda 40'ar hasta var. Beklenen etki d=0.6, alfa 0.05, iki yönlü. Bu çalışmanın gücü nedir?",
+  "expected_family": "t2-indep",
+  "expected_parameters": {
+   "d": 0.6,
+   "alpha": 0.05,
+   "tails": 2,
+   "n1": 40,
+   "n2": 40
+  },
+  "expected": {
+   "n1": 40,
+   "n2": 40,
+   "n_total": 80,
+   "power": 0.755
+  },
+  "expected_behaviour": "call the tool; report its numbers"
+ },
+ {
+  "id": "Q06",
+  "question": "Pilot çalışmada büyük bir etki gördük (d=0.8). Ana çalışmada iki bağımsız grubu karşılaştıracağız, alfa 0.01 çift yönlü, güç %90. Kaç kişi lazım?",
+  "expected_family": "t2-indep",
+  "expected_parameters": {
+   "d": 0.8,
+   "alpha": 0.01,
+   "power": 0.9,
+   "tails": 2,
+   "ratio": 1
+  },
+  "expected": {
+   "n1": 49,
+   "n2": 49,
+   "n_total": 98,
+   "power": 0.9058
+  },
+  "expected_behaviour": "call the tool; report its numbers"
+ },
+ {
+  "id": "Q07",
+  "question": "Aynı hastaların tansiyonunu tedaviden önce ve sonra ölçeceğim. Farkların etki büyüklüğü dz=0.5, alfa 0.05, iki yönlü, güç 0.95. Kaç hasta gerekir?",
+  "expected_family": "t-paired",
+  "expected_parameters": {
+   "dz": 0.5,
+   "alpha": 0.05,
+   "power": 0.95,
+   "tails": 2
+  },
+  "expected": {
+   "n_total": 54,
+   "power": 0.9502
+  },
+  "expected_behaviour": "call the tool; report its numbers"
+ },
+ {
+  "id": "Q08",
+  "question": "Önce-sonra tasarımında 24 hastam var, dz=0.6 bekliyorum, alfa 0.05 iki yönlü. Gücüm ne kadar?",
+  "expected_family": "t-paired",
+  "expected_parameters": {
+   "dz": 0.6,
+   "alpha": 0.05,
+   "tails": 2,
+   "n": 24
+  },
+  "expected": {
+   "n_total": 24,
+   "power": 0.8037
+  },
+  "expected_behaviour": "call the tool; report its numbers"
+ },
+ {
+  "id": "Q09",
+  "question": "Üç farklı tedavi kolunu (A, B, C) tek yönlü ANOVA ile karşılaştıracağım, f=0.25, alfa 0.05, güç 0.80. Toplam kaç hasta gerekir?",
+  "expected_family": "unsupported",
+  "expected_parameters": {},
+  "expected": null,
+  "expected_behaviour": "say the family is not implemented; give no number"
+ },
+ {
+  "id": "Q10",
+  "question": "Hastalarımda bir tedavinin etkisini ölçmek istiyorum, orta düzey bir etki bekliyorum. Kaç kişi almalıyım?",
+  "expected_family": "ambiguous",
+  "expected_parameters": {},
+  "expected": null,
+  "expected_behaviour": "ask for the design and the effect size; give no number"
+ }
+]

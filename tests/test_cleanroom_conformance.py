@@ -108,7 +108,7 @@ def test_round_trips(index):
 
 
 def test_reproduces_the_real_gpower():
-    """[REA] The second implementation against every recorded a-priori
+    """[GÖZLEM] The second implementation against every recorded a-priori
     G*Power 3.1.9.6 result (N <= 1e7) -- not against the first one."""
     obs = check_gpower_observations(cr)
     assert obs["rows"] >= 200

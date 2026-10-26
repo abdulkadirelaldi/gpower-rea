@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Finding** | [F-10](../../SPEC.md#f-10--compromise-analysis-is-defined-on-the-critical-value) |
-| **Status** | `[REA] DERIVED + OBSERVED` — observed on G\*Power 3.1.9.6 (macOS) |
+| **Status** | `[TÜRETİLMİŞ + GÖZLEM]` — observed on G\*Power 3.1.9.6 (macOS) |
 | **Method** | Structural probing + consistency with F-02 |
 | **Target** | G\*Power 3.1.9.x, `t tests`, `Type of power analysis = Compromise` |
 | **Probe id** | `P-10` |
@@ -106,7 +106,7 @@ $ gpower solve -t indep -s power -e 0.5 --n1 40 --n2 40 -a 0.1846853 --json
   "power": 0.8153147...,  "critical_t": 1.3383050...
 ```
 
-## [REA] Observation — G\*Power 3.1.9.6
+## [GÖZLEM] Observation — G\*Power 3.1.9.6
 
 Read off the GUI's *Output parameters* panel by `tools/rea_campaign.py`
 (raw records in [`probes/observations/`](../../probes/observations/)). The
@@ -124,7 +124,7 @@ engine — `tests/test_gpower_observed.py` checks each one.
 
 ## Verdict
 
-**[REA] F-10 — observed.** All four printed quantities of all three rows are identical to seven decimals, which also re-confirms the far-tail term of F-02 inside `β(c)`.
+**[GÖZLEM] F-10 — observed.** All four printed quantities of all three rows are identical to seven decimals, which also re-confirms the far-tail term of F-02 inside `β(c)`.
 
 ## Re-run
 

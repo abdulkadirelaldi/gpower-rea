@@ -3,12 +3,12 @@
 | | |
 |---|---|
 | **Finding** | [F-09](../../SPEC.md#f-09--allocation-ratio-rounding) |
-| **Status** | `[REA] REFUTED → CORRECTED` — both v1.1 candidates refuted; the observed rule reproduces every row |
+| **Status** | `[GÖZLEM: ÇÜRÜTÜLDÜ → DÜZELTİLDİ]` — both v1.1 candidates refuted; the observed rule reproduces every row |
 | **Method** | Pre-registered discriminating probes, then a ratio sweep, then a fine power sweep to expose the stopping test |
 | **Target** | G\*Power 3.1.9.6 (macOS), `t tests` → *Means: Difference between two independent means (two groups)*, *A priori* |
 | **Probe ids** | `P-09-a…d` (pre-registered), `A-000…A-047` (ratio sweep), `S-000…S-040` (power sweep), plus every `indep` a-priori row of the grid `G-*` |
 
-## [REA] Claim
+## [GÖZLEM] Claim
 
 ```
 for N = 4, 6, 8, …                       even totals only, at every ratio R
@@ -111,7 +111,7 @@ as `--allocation-rule n1-grid` / `total-grid`, only to reproduce v1.1 output.
 
 ## Verdict
 
-**[REA] F-09 — observed.** The even-total rule reproduces every recorded
+**[GÖZLEM] F-09 — observed.** The even-total rule reproduces every recorded
 a-priori two-group result of G\*Power 3.1.9.6, in every printed field; both
 rules of v1.1 are refuted.
 

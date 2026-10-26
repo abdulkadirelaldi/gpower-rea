@@ -63,17 +63,17 @@ asks for, and it is why the evidence files are structured around
 
 ---
 
-## 3. What counts as `[REA]` evidence here
+## 3. What counts as `[GÖZLEM]` evidence here
 
-Every finding in SPEC.md carries the label **`[REA]`** and one status. The
+Every finding in SPEC.md carries the label **`[GÖZLEM]`** and one status. The
 statuses say *how* the claim is established; the label says it is claimed as
 reverse-engineered behaviour, with evidence, and not copied from the manual.
 
 | status | how it is established | findings |
 |---|---|---|
-| `[REA] OBSERVED` | a recorded G\*Power 3.1.9.6 reading settles it, with a competing prediction it refutes | F-02, F-05, F-06, F-12, F-14 |
-| `[REA] DERIVED + OBSERVED` | forced by internal consistency between menu entries, **and** confirmed by a reading | F-01, F-03, F-04, F-07, F-10 |
-| `[REA] REFUTED → CORRECTED` | the pre-registered prediction was **wrong**; the finding now states the observed rule | F-08, F-09 (and one clause of F-06) |
+| `[GÖZLEM]` | a recorded G\*Power 3.1.9.6 reading settles it, with a competing prediction it refutes | F-02, F-05, F-06, F-12, F-14 |
+| `[TÜRETİLMİŞ + GÖZLEM]` | forced by internal consistency between menu entries, **and** confirmed by a reading | F-01, F-03, F-04, F-07, F-10 |
+| `[GÖZLEM: ÇÜRÜTÜLDÜ → DÜZELTİLDİ]` | the pre-registered prediction was **wrong**; the finding now states the observed rule | F-08, F-09 (and one clause of F-06) |
 
 ### Derivation — proof by internal consistency
 

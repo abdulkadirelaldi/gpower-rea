@@ -1,0 +1,102 @@
+{
+ "id": "Q02",
+ "question": "Randomize kontrollü bir çalışmada tedavi ve kontrol kolları eşit olacak. Orta düzey bir etki (Cohen d = 0.5) için %95 güç ve 0.05 anlamlılık düzeyiyle toplam kaç katılımcı gerekir?",
+ "tool_calls": [
+  {
+   "tool": "power_analysis",
+   "input": {
+    "test": "ttest-indep-means",
+    "solve_for": "n",
+    "effect_size": 0.5,
+    "alpha": 0.05,
+    "power": 0.95,
+    "tails": 2,
+    "allocation_ratio": 1
+   },
+   "output": {
+    "ok": true,
+    "result": {
+     "schema": "gpower-rea/result/1",
+     "test": "ttest-indep-means",
+     "test_title": "Means: Difference between two independent means (two groups)",
+     "family": "t tests",
+     "solve_for": "n",
+     "tails": 2,
+     "alpha": 0.05,
+     "power": 0.9501287033887206,
+     "df": 208.0,
+     "noncentrality": 3.6228441865473595,
+     "critical_t": 1.971434658520242,
+     "effect_size": {
+      "name": "d",
+      "value": 0.5
+     },
+     "sample_size": {
+      "n1": 105,
+      "n2": 105,
+      "total": 210,
+      "allocation_ratio": 1.0,
+      "actual_ratio": 1.0
+     },
+     "target": {
+      "power": 0.95
+     },
+     "engine": {
+      "name": "gpower-rea",
+      "version": "1.3.0",
+      "spec": "SPEC.md v1.3",
+      "allocation_rule": "even-total"
+     },
+     "warnings": []
+    },
+    "report_text": "t tests - Means: Difference between two independent means (two groups)\n\nAnalysis:          A priori: Compute required sample size\nInput Parameters\n  Tail(s)                        = 2\n  Effect size d                  = 0.5\n  alpha err prob                 = 0.05\n  Power (1-beta err prob)        = 0.95\n  Allocation ratio N2/N1         = 1\nOutput Parameters\n  Noncentrality parameter delta  = 3.6228442\n  Critical t                     = 1.9714347\n  Df                             = 208\n  Sample size group 1            = 105\n  Sample size group 2            = 105\n  Total sample size              = 210\n  Actual power                   = 0.9501287\n\n[engine gpower-rea 1.3.0, SPEC.md v1.3, allocation rule 'even-total']",
+    "apa_sentence": "An a priori power analysis for a two-tailed means: difference between two independent means (two groups) (d = 0.5, alpha = 0.05, target power = 0.95) indicated that n1 = 105 and n2 = 105 (total N = 210) is required; the achieved power at that sample size is 0.9501."
+   }
+  }
+ ],
+ "final_answer": "**Toplam 210 katılımcı gerekiyor: tedavi kolunda 105, kontrol kolunda 105.** Bu örneklem büyüklüğünde elde edilen güç 0.9501, yani hedeflenen %95'in biraz üzerinde.\n\n**Tasarım:** Bağımsız iki grup, paralel kollu RKÇ. Kullanılan test bağımsız örneklemler t testi (iki bağımsız ortalama arasındaki fark), etki büyüklüğü Cohen d.\n\n**Varsayımlar:**\n- Sizin verdiğiniz değerler: d = 0.5, α = 0.05, güç = 0.95, eşit kollar (dağılım oranı N2/N1 = 1).\n- Benim varsaydığım değer: **çift yönlü test**. Bunu siz belirtmediğiniz için varsayılan olarak aldım.\n- Diğer çıktılar: serbestlik derecesi = 208, kritik t = 1.971, merkezî olmama parametresi δ = 3.623.\n- Bu sayıya **kayıp ya da çalışmadan ayrılma payı dahil değildir.** Beklenen kayıp oranına göre örneklemi artırmanız gerekir.\n\n**Yöntem bölümüne eklenebilecek cümle:**\n> An a priori power analysis for a two-tailed difference between two independent means (two groups) (d = 0.5, alpha = 0.05, target power = 0.95) indicated that n1 = 105 and n2 = 105 (total N = 210) is required; the achieved power at that sample size is 0.9501.\n\nTek yönlü bir hipotez öngörüyorsanız (örneğin yalnızca tedavinin üstünlüğü) söyleyin, hesabı yeniden yapayım.",
+ "wall_seconds": 20.3,
+ "usage": {
+  "input_tokens": 6,
+  "cache_creation_input_tokens": 13110,
+  "cache_read_input_tokens": 57087,
+  "output_tokens": 915,
+  "output_tokens_details": {
+   "thinking_tokens": 0
+  },
+  "server_tool_use": {
+   "web_search_requests": 0,
+   "web_fetch_requests": 0
+  },
+  "service_tier": "standard",
+  "cache_creation": {
+   "ephemeral_1h_input_tokens": 13110,
+   "ephemeral_5m_input_tokens": 0
+  },
+  "inference_geo": "global",
+  "iterations": [
+   {
+    "input_tokens": 2,
+    "output_tokens": 617,
+    "cache_read_input_tokens": 23431,
+    "cache_creation_input_tokens": 1021,
+    "cache_creation": {
+     "ephemeral_5m_input_tokens": 0,
+     "ephemeral_1h_input_tokens": 1021
+    },
+    "type": "message"
+   }
+  ],
+  "speed": "standard",
+  "fallback_credit": null
+ },
+ "cost_usd": 0.1346214,
+ "num_turns": 3,
+ "model": "claude-opus-5-5",
+ "exit_code": 0,
+ "score": {
+  "family": true,
+  "params": true,
+  "answer": true
+ }
+}

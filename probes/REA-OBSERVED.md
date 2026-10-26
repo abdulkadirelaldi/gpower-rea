@@ -12,34 +12,34 @@ integer). Nothing here is a prediction.
 | platform | macOS-27.0.1-arm64-arm-64bit-Mach-O |
 | instrument | tools/gpower_ax.py (macOS Accessibility, black box) |
 | first observation | 2026-10-26T17:56:59 |
-| last observation | 2026-10-26T19:52:21 |
+| last observation | 2026-10-26T20:21:59 |
 
 ## Summary
 
 | quantity | result |
 |---|---|
-| cases observed | **435** |
-| every printed field identical | **396 / 410** |
+| cases observed | **443** |
+| every printed field identical | **404 / 418** |
 | inputs G\*Power refused, engine refused too | 25 |
-| a priori: exact total *N* | **219 / 223** (98.2%) |
+| a priori: exact total *N* | **225 / 229** (98.3%) |
 | mismatches | **14** |
 
 ## Per printed field
 
 | field | identical | of |
 |---|---:|---:|
-| Actual power | 221 | 223 |
-| Critical t | 401 | 408 |
-| Df | 356 | 360 |
+| Actual power | 227 | 229 |
+| Critical t | 409 | 416 |
+| Df | 364 | 368 |
 | Effect size d | 6 | 6 |
 | Effect size dz | 3 | 3 |
 | Effect size f² | 10 | 10 |
 | Effect size |ρ| | 6 | 6 |
-| Noncentrality parameter δ | 364 | 367 |
-| Power (1-β err prob) | 107 | 107 |
-| Sample size group 1 | 125 | 126 |
-| Sample size group 2 | 125 | 126 |
-| Total sample size | 219 | 223 |
+| Noncentrality parameter δ | 372 | 375 |
+| Power (1-β err prob) | 109 | 109 |
+| Sample size group 1 | 130 | 131 |
+| Sample size group 2 | 130 | 131 |
+| Total sample size | 225 | 229 |
 | α err prob | 84 | 91 |
 | β err prob | 62 | 63 |
 
@@ -51,20 +51,20 @@ integer). Nothing here is a prediction.
 | `generic` | criterion | 13 | 13 |
 | `generic` | post hoc | 18 | 18 |
 | `generic` | sensitivity | 7 | 7 |
-| `indep` | a priori | 127 | 128 |
+| `indep` | a priori | 132 | 133 |
 | `indep` | compromise | 16 | 16 |
 | `indep` | criterion | 6 | 7 |
-| `indep` | post hoc | 13 | 13 |
+| `indep` | post hoc | 14 | 14 |
 | `indep` | sensitivity | 3 | 3 |
 | `one-sample` | a priori | 34 | 36 |
 | `one-sample` | compromise | 2 | 3 |
 | `one-sample` | criterion | 6 | 7 |
 | `one-sample` | post hoc | 12 | 12 |
 | `one-sample` | sensitivity | 4 | 4 |
-| `paired` | a priori | 25 | 25 |
+| `paired` | a priori | 26 | 26 |
 | `paired` | compromise | 3 | 3 |
 | `paired` | criterion | 1 | 7 |
-| `paired` | post hoc | 7 | 7 |
+| `paired` | post hoc | 8 | 8 |
 | `paired` | sensitivity | 3 | 3 |
 | `point-biserial` | a priori | 25 | 26 |
 | `point-biserial` | compromise | 6 | 6 |

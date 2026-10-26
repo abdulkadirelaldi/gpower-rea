@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Finding** | [F-07](../../SPEC.md#f-07--regression-coefficient-ν--n---p---1-δ--f²n) |
-| **Status** | `[REA] DERIVED + OBSERVED` — observed on G\*Power 3.1.9.6 (macOS) |
+| **Status** | `[TÜRETİLMİŞ + GÖZLEM]` — observed on G\*Power 3.1.9.6 (macOS) |
 | **Method** | Reduction to a known family member + single-variable isolation |
 | **Target** | G\*Power 3.1.9.x, `t tests` → *Linear multiple regression: Fixed model, single regression coefficient* |
 | **Probe id** | `P-07` |
@@ -114,7 +114,7 @@ gpower: invalid input: ttest-regression-coef: sample size too small,
         degrees of freedom = -7
 ```
 
-## [REA] Observation — G\*Power 3.1.9.6
+## [GÖZLEM] Observation — G\*Power 3.1.9.6
 
 Read off the GUI's *Output parameters* panel by `tools/rea_campaign.py`
 (raw records in [`probes/observations/`](../../probes/observations/)). The
@@ -133,7 +133,7 @@ engine — `tests/test_gpower_observed.py` checks each one.
 
 ## Verdict
 
-**[REA] F-07 — observed.** `δ` is identical for `p = 1` and `p = 5` while `Df` drops by four: the predictor count enters `ν` only.
+**[GÖZLEM] F-07 — observed.** `δ` is identical for `p = 1` and `p = 5` while `Df` drops by four: the predictor count enters `ν` only.
 
 ## Re-run
 

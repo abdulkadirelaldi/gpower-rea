@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Finding** | [F-03](../../SPEC.md#f-03--one-sample-and-matched-pairs-ν--n---1-δ--es√n) |
-| **Status** | `[REA] DERIVED + OBSERVED` — observed on G\*Power 3.1.9.6 (macOS) |
+| **Status** | `[TÜRETİLMİŞ + GÖZLEM]` — observed on G\*Power 3.1.9.6 (macOS) |
 | **Method** | Cross-entry identity probing |
 | **Target** | G\*Power 3.1.9.x, `t tests` |
 | **Probe id** | `P-03` |
@@ -97,7 +97,7 @@ The reduction in `σ_diff` from the pre-post correlation is already absorbed
 into `dz` by the effect-size calculator (see E-011); applying it twice is the
 other common error.
 
-## [REA] Observation — G\*Power 3.1.9.6
+## [GÖZLEM] Observation — G\*Power 3.1.9.6
 
 Read off the GUI's *Output parameters* panel by `tools/rea_campaign.py`
 (raw records in [`probes/observations/`](../../probes/observations/)). The
@@ -114,7 +114,7 @@ engine — `tests/test_gpower_observed.py` checks each one.
 
 ## Verdict
 
-**[REA] F-03 — observed.** *Total sample size* counts pairs: `N = 54`, `Df = 53`, and the matched-pairs and one-sample entries print identical output panels for the same effect size.
+**[GÖZLEM] F-03 — observed.** *Total sample size* counts pairs: `N = 54`, `Df = 53`, and the matched-pairs and one-sample entries print identical output panels for the same effect size.
 
 ## Re-run
 

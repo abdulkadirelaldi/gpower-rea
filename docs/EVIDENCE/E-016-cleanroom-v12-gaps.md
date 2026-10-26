@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Finding** | [F-16](../../SPEC.md#f-16--points-spec-v12-left-undetermined-closed-by-observation-where-possible) |
-| **Status** | `[SPEC-CLOSURE]`; twelve of nineteen rows `[REA] OBSERVED` |
+| **Status** | `[SPEC-CLOSURE]`; twelve of nineteen rows `[GÖZLEM]` |
 | **Method** | A second implementation written from SPEC v1.2 alone; each reported gap then turned into a GUI probe |
 | **Probe ids** | `X-G2-*` (`tools/rea_campaign.py --set gaps`), plus `D-*`, `S-*` |
 
@@ -23,7 +23,7 @@ skip". The first pass (F-13) could only settle such gaps by convention. This
 time the reference program was available, so each gap that is a question about
 G\*Power became a probe.
 
-## [REA] Observation
+## [GÖZLEM] Observation
 
 | probe | input | G\*Power printed | engine (v1.3) |
 |---|---|---|---|

@@ -1,0 +1,102 @@
+{
+ "id": "Q01",
+ "question": "Yeni bir antihipertansif ilacı plaseboyla karşılaştıracağım. İki bağımsız grup olacak, etki büyüklüğü d=0.5 bekliyorum. Alfa 0.05, çift yönlü, güç %80. Her gruba kaç hasta almalıyım?",
+ "tool_calls": [
+  {
+   "tool": "power_analysis",
+   "input": {
+    "test": "ttest-indep-means",
+    "solve_for": "n",
+    "effect_size": 0.5,
+    "alpha": 0.05,
+    "power": 0.8,
+    "tails": 2,
+    "allocation_ratio": 1
+   },
+   "output": {
+    "ok": true,
+    "result": {
+     "schema": "gpower-rea/result/1",
+     "test": "ttest-indep-means",
+     "test_title": "Means: Difference between two independent means (two groups)",
+     "family": "t tests",
+     "solve_for": "n",
+     "tails": 2,
+     "alpha": 0.05,
+     "power": 0.8014595579222545,
+     "df": 126.0,
+     "noncentrality": 2.8284271247461903,
+     "critical_t": 1.9789706019906284,
+     "effect_size": {
+      "name": "d",
+      "value": 0.5
+     },
+     "sample_size": {
+      "n1": 64,
+      "n2": 64,
+      "total": 128,
+      "allocation_ratio": 1.0,
+      "actual_ratio": 1.0
+     },
+     "target": {
+      "power": 0.8
+     },
+     "engine": {
+      "name": "gpower-rea",
+      "version": "1.3.0",
+      "spec": "SPEC.md v1.3",
+      "allocation_rule": "even-total"
+     },
+     "warnings": []
+    },
+    "report_text": "t tests - Means: Difference between two independent means (two groups)\n\nAnalysis:          A priori: Compute required sample size\nInput Parameters\n  Tail(s)                        = 2\n  Effect size d                  = 0.5\n  alpha err prob                 = 0.05\n  Power (1-beta err prob)        = 0.8\n  Allocation ratio N2/N1         = 1\nOutput Parameters\n  Noncentrality parameter delta  = 2.8284271\n  Critical t                     = 1.9789706\n  Df                             = 126\n  Sample size group 1            = 64\n  Sample size group 2            = 64\n  Total sample size              = 128\n  Actual power                   = 0.8014596\n\n[engine gpower-rea 1.3.0, SPEC.md v1.3, allocation rule 'even-total']",
+    "apa_sentence": "An a priori power analysis for a two-tailed means: difference between two independent means (two groups) (d = 0.5, alpha = 0.05, target power = 0.8) indicated that n1 = 64 and n2 = 64 (total N = 128) is required; the achieved power at that sample size is 0.8015."
+   }
+  }
+ ],
+ "final_answer": "**Her gruba 64 hasta gerekiyor: ilaç grubuna 64, plasebo grubuna 64, toplam 128 hasta.** Bu örneklemle elde edilen güç **0.8015**. Bu değer %80 hedefinin biraz üzerinde, çünkü örneklem tam sayıya yuvarlanıyor.\n\n**Kullanılan tasarım:** İki bağımsız grup ve paralel kol olduğu için bağımsız iki grup ortalaması arasındaki fark için t testi (`ttest-indep-means`, etki büyüklüğü Cohen's d) kullanıldı.\n\n**Varsayımlar:**\n- **Sizin verdiğiniz değerler:** d = 0.5, α = 0.05, çift yönlü test, güç = 0.80.\n- **Varsayılan aldığım değer:** Gruplar arası dağılım oranı 1:1 (eşit grup büyüklüğü). Farklı bir oran planlıyorsanız, örneğin 2:1 ilaç:plasebo, söyleyin; yeniden hesaplarım.\n- **Diğer hesap çıktıları:** serbestlik derecesi = 126, kritik t = 1.979, merkezi olmama parametresi δ = 2.828.\n- **Hesaba katılmayanlar:** Hasta kaybı (dropout) bu hesapta yok. Beklediğiniz kayıp oranını bildirirseniz, buna göre artırılmış örneklemi de araçla hesaplayabilirim. Ayrıca d = 0.5 değerinin kan basıncı farkı ve SD olarak neye karşılık geldiğini yöntem bölümünde gerekçelendirmeniz iyi olur. Ham ortalama ve SD değerleriniz varsa, d'yi onlardan da türetebilirim.\n\n**Yöntem bölümü için cümle (İngilizce, araç çıktısı):**\n> An a priori power analysis for a two-tailed means: difference between two independent means (two groups) (d = 0.5, alpha = 0.05, target power = 0.8) indicated that n1 = 64 and n2 = 64 (total N = 128) is required; the achieved power at that sample size is 0.8015.\n\n**Türkçe karşılığı:**\n> İki yönlü bağımsız örneklemler t testi için yapılan a priori güç analizi (d = 0.5, α = 0.05, hedef güç = 0.80), grup başına 64 katılımcı (toplam N = 128) gerektiğini göstermiştir; bu örneklem büyüklüğünde elde edilen güç 0.8015'tir.",
+ "wall_seconds": 15.1,
+ "usage": {
+  "input_tokens": 6,
+  "cache_creation_input_tokens": 13118,
+  "cache_read_input_tokens": 57101,
+  "output_tokens": 1307,
+  "output_tokens_details": {
+   "thinking_tokens": 102
+  },
+  "server_tool_use": {
+   "web_search_requests": 0,
+   "web_fetch_requests": 0
+  },
+  "service_tier": "standard",
+  "cache_creation": {
+   "ephemeral_1h_input_tokens": 13118,
+   "ephemeral_5m_input_tokens": 0
+  },
+  "inference_geo": "global",
+  "iterations": [
+   {
+    "input_tokens": 2,
+    "output_tokens": 1009,
+    "cache_read_input_tokens": 23438,
+    "cache_creation_input_tokens": 1022,
+    "cache_creation": {
+     "ephemeral_5m_input_tokens": 0,
+     "ephemeral_1h_input_tokens": 1022
+    },
+    "type": "message"
+   }
+  ],
+  "speed": "standard",
+  "fallback_credit": null
+ },
+ "cost_usd": 0.1425282,
+ "num_turns": 3,
+ "model": "claude-opus-5-5",
+ "exit_code": 0,
+ "score": {
+  "family": true,
+  "params": true,
+  "answer": true
+ }
+}

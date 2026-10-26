@@ -3,7 +3,7 @@
 | | |
 |---|---|
 | **Finding** | [F-01](../../SPEC.md#f-01--one-model-for-the-whole-family) |
-| **Status** | `[REA] DERIVED + OBSERVED` — observed on G\*Power 3.1.9.6 (macOS) |
+| **Status** | `[TÜRETİLMİŞ + GÖZLEM]` — observed on G\*Power 3.1.9.6 (macOS) |
 | **Method** | Structural black-box probing + published-output comparison |
 | **Target** | G\*Power 3.1.9.x, test family `t tests` |
 | **Probe id** | `P-01` |
@@ -83,7 +83,7 @@ Reproducing four independent printed quantities simultaneously from a
 two-parameter model is strong evidence that the model is the right one; a
 different `δ` convention would match at most one of them.
 
-## [REA] Observation — G\*Power 3.1.9.6
+## [GÖZLEM] Observation — G\*Power 3.1.9.6
 
 Read off the GUI's *Output parameters* panel by `tools/rea_campaign.py`
 (raw records in [`probes/observations/`](../../probes/observations/)). The
@@ -99,7 +99,7 @@ engine — `tests/test_gpower_observed.py` checks each one.
 
 ## Verdict
 
-**[REA] F-01 — observed.** All five printed quantities of the canonical example are identical to seven decimals, and the same single `(ν, δ)` routine reproduces every one of the 299 recorded G\*Power runs across all six tests and five analyses (see `probes/REA-OBSERVED.md`).
+**[GÖZLEM] F-01 — observed.** All five printed quantities of the canonical example are identical to seven decimals, and the same single `(ν, δ)` routine reproduces every one of the 299 recorded G\*Power runs across all six tests and five analyses (see `probes/REA-OBSERVED.md`).
 
 ## Re-run
 

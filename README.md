@@ -1,7 +1,153 @@
 # gpower-rea
 
-**Sample size and statistical power for the G\*Power *t tests* family — from a
-command line, from an MCP server, or in plain language.**
+**t2-indep (two independent means) sample size and power, as G\*Power computes
+them — from a CLI, from an MCP server, or in plain Turkish.**
+
+> **Yapılan katmanlar:** ✅ Temel — CLI (`gpower-clone`, ders sözleşmesi) ·
+> ✅ +15 MCP sunucusu (`gpower-mcp`) · ✅ +10 AI ajanı (MCP üzerinden, Türkçe).
+> Test ailesi: **1) t2-indep** (the engine also covers the rest of G\*Power's
+> *t tests* family). Jev (Sistem 1) was not used: the family-selection step is
+> the same LLM restricted to the tools, see [agent/eval/REPORT.md](agent/eval/REPORT.md).
+
+| | |
+|---|---|
+| **gate: hidden-vector style N, exact** | `gpower-clone` vs every G\*Power t2-indep reading: **125 / 125** a-priori `N` exact ([tests/UYUM-RAPORU.md](tests/UYUM-RAPORU.md)); all tests and analyses: 219 / 219 |
+| differential test | 435 G\*Power GUI runs; 421 / 421 identical outside F-14 ([VALIDATION §0](docs/VALIDATION.md#0-against-the-real-gpower--435-recorded-runs)) |
+| evidence ledger | [LEDGER.md](LEDGER.md) — `[DOK]`, `[GÖZLEM]`, `[AJAN]`; **no `[REA]` (binary) lines: no static analysis was done in this work** |
+| hallucination log | [HALLUCINATIONS.md](HALLUCINATIONS.md) — 10 entries, each with the test that caught it |
+| spec | [SPEC.md](SPEC.md) v1.3, acceptance criteria in Gherkin (§6, executable: `tests/test_gherkin_spec.py`) |
+| agent cost | [AGENT_COST.md](AGENT_COST.md) |
+| prompts of both sessions | [prompts/](prompts/) |
+| oracle | [oracle/](oracle/) — 141 G\*Power t2-indep vectors (CSV) + 900 `statsmodels` vectors |
+| agent evaluation | [agent/eval/REPORT.md](agent/eval/REPORT.md) — **10 / 10** family, parameters and N |
+
+### Versions and identity
+
+| | |
+|---|---|
+| reference program, readings | G\*Power **3.1.9.6 for macOS** (`GPowerMac_3.1.9.6.zip`, SHA-256 `841390e00110ccdd5201f334af985b54837b9f9b4ffb3151d49e28efb9bb3964`) |
+| reference program named by the course | G\*Power **3.1.9.7 for Windows**, `GPowerNT.exe` SHA-256 **`c63e6a133eb6372932f810c08cc33dc35a06d1ddb658f897bd6c34a754efc812`** (from `GPowerWin_3.1.9.7.zip`, SHA-256 `3bb7f1f2478d74ee5ba701ae7f849373cf2b8a11f6b6216c7c6b236db7861199`) — not in this repository (`.gitignore`) |
+| engine / spec | `gpower-rea` 1.3.0, `SPEC.md` v1.3 |
+| runtime | Python ≥ 3.10, no third-party dependency for engine and CLI |
+| REA / Ghidra check (brief, "Kurulum") | not performed — see LEDGER.md |
+| demo video (60 s, CLI) | _to be added_ |
+
+### Install and run
+
+```console
+$ pip install -e .                       # engine + gpower-clone + gpower, no dependencies
+$ pip install -e ".[mcp,agent,dev]"      # + MCP server, agent, test suite
+
+$ gpower-clone --test t2-indep --mode a-priori --tails 2 --d 0.5 --alpha 0.05 --power 0.95 --ratio 1
+{"n1":105,"n2":105,"n_total":210,"actual_power":0.9501,"critical":1.9714,"df":208,"ncp":3.6228}
+
+$ gpower-clone --test t2-indep --mode post-hoc --tails 2 --d 0.5 --alpha 0.05 --n1 40 --n2 40
+{"n1":40,"n2":40,"n_total":80,"actual_power":0.5981,"critical":1.9908,"df":78,"ncp":2.2361}
+
+$ gpower-clone --test t2-indep --mode a-priori --tails 2 --d 0.5 --alpha 0.05 --power 0.8 --ratio 1000
+{"error":"allocation ratio N2/N1 must be in [0.01, 100], the range G*Power accepts, got 1000.0 (SPEC F-15)"}
+$ echo $?
+2
+
+$ python -m pytest -q                    # 1500+ tests, incl. every G*Power reading
+```
+
+`--test` accepts `t2-indep` and `t-paired`; the other course labels
+(`anova-oneway`, `chi2-contingency`, `multireg-r2`) are refused by name.
+`--mode` is `a-priori` or `post-hoc`; `--d` (alias `--dz`), `--alpha`,
+`--power`, `--ratio` (`N2/N1`, default 1), `--tails` (default 2), and for
+post hoc `--n1 --n2`. Output is always one JSON line; on invalid input
+`{"error": "..."}` and exit code `2`.
+
+### MCP tool schema
+
+`gpower-mcp` serves six tools over stdio
+(`{"mcpServers": {"gpower": {"command": "gpower-mcp"}}}`). Every tool calls the
+same `engine.solve()` as the CLI; `tests/test_clone_cli.py::test_cli_and_mcp_give_the_same_output`
+and `tests/test_mcp_server.py` assert that both give the same numbers for the
+same input. Inputs (generated from the server's own schema):
+
+#### `list_tests`
+
+List every statistical test this engine implements, with its effect-size
+
+No inputs.
+
+#### `describe_test`
+
+Describe one test: its exact G*Power menu title, effect-size metric,
+
+| input | type | required | default |
+|---|---|---|---|
+| `test` | string | yes |  |
+
+#### `power_analysis`
+
+Run one power analysis and return the full numeric result plus
+
+| input | type | required | default |
+|---|---|---|---|
+| `test` | string | yes |  |
+| `solve_for` | string ∈ n, power, alpha, effect_size, effect-size, compromise |  | "n" |
+| `alpha` | number/null |  | null |
+| `power` | number/null |  | null |
+| `effect_size` | number/null |  | null |
+| `tails` | integer |  | 2 |
+| `n` | integer/null |  | null |
+| `n1` | integer/null |  | null |
+| `n2` | integer/null |  | null |
+| `allocation_ratio` | number/null |  | null |
+| `allocation_rule` | string/null |  | null |
+| `beta_alpha_ratio` | number/null |  | null |
+| `predictors` | integer/null |  | null |
+| `df` | number/null |  | null |
+
+#### `compute_effect_size`
+
+Convert raw descriptive statistics into the standardised effect size a
+
+| input | type | required | default |
+|---|---|---|---|
+| `calculator` | string | yes |  |
+| `parameters` | object | yes |  |
+
+#### `power_curve`
+
+Tabulate power against sample size -- useful for showing a user the
+
+| input | type | required | default |
+|---|---|---|---|
+| `test` | string | yes |  |
+| `alpha` | number | yes |  |
+| `effect_size` | number | yes |  |
+| `n_from` | integer | yes |  |
+| `n_to` | integer | yes |  |
+| `n_step` | integer |  | 1 |
+| `tails` | integer |  | 2 |
+| `allocation_ratio` | number/null |  | null |
+| `predictors` | integer/null |  | null |
+
+#### `engine_provenance`
+
+Report engine version, the specification it implements, and the
+
+No inputs.
+Every tool returns `{"ok": true, ...}`; `power_analysis` returns
+`{"ok": true, "result": {...}, "report_text": ..., "apa_sentence": ...}`, where
+`result` has `sample_size.{n1,n2,total}`, `power`, `critical_t`, `df`,
+`noncentrality`, `effect_size`, `warnings[]`. On invalid input:
+`{"ok": false, "error": {"type": ..., "message": ...}}`.
+
+### Attribution
+
+G\*Power is the work of **Faul, Erdfelder, Lang & Buchner** (2007, *Behavior
+Research Methods* 39, 175–191; 2009, 41, 1149–1160), distributed free of
+charge by Heinrich-Heine-Universität Düsseldorf. This repository is **not**
+G\*Power, is not affiliated with or endorsed by its authors, and does not use
+its name for the reimplementation (`gpower-clone` is the course's mandated
+command name). Cite G\*Power for the method.
+
+---
 
 G\*Power is the tool clinical researchers use to answer *"how many participants
 do I need?"*. It is free and excellent, and it has only a graphical interface:
@@ -10,7 +156,7 @@ screenshots and clicking, which is slow, expensive and silently unreliable.
 
 This repository reverse engineers one of its test families **by running the
 real program** — G\*Power 3.1.9.6, driven black-box through its own GUI —
-documents every finding with `[REA]` evidence, reimplements it clean-room, and
+documents every finding with `[GÖZLEM]` evidence, reimplements it clean-room, and
 gives it three interfaces.
 
 > **Against the real G\*Power: 435 recorded runs, 421/421 identical in every
@@ -137,11 +283,11 @@ have; that run used Claude Code as the harness over the same MCP server —
 
 ## What was reverse engineered
 
-Sixteen findings. Every G\*Power claim is labelled **`[REA]`**, has an evidence file, and
+Sixteen findings. Every G\*Power claim is labelled **`[GÖZLEM]`**, has an evidence file, and
 is settled by recorded G\*Power output — and every one is behaviour the manual
 does not state:
 
-| # | finding | `[REA]` status |
+| # | finding | `[GÖZLEM]` status |
 |---|---|---|
 | [F-01](SPEC.md#f-01--one-model-for-the-whole-family) | the whole family reduces to one `(ν, δ)` pair | derived + observed |
 | [F-02](SPEC.md#f-02--two-sided-power-retains-the-far-tail-term) | **two-sided power keeps the wrong-side tail** — at `δ = 0` G\*Power prints `α`, not `α/2` | observed |
@@ -194,7 +340,7 @@ found the negative-effect rule, the input domain, a large-`ν` numerical defect
 in the engine, and two regions where G\*Power is itself inexact.
 
 ```console
-$ python -m pytest -q                     # 1330 passed, incl. every recorded G*Power reading
+$ python -m pytest -q                     # 1541 passed, incl. every recorded G*Power reading
 $ python tools/rea_report.py              # cases=435 match=396 both_refuse=25 mismatch=14
 $ python tools/fit_allocation.py          # F-09: 7 candidate rules vs the readings
 $ gpower selftest                         # 401/401 exact N matches (rate 1.0000)
@@ -235,7 +381,7 @@ ETHICS.md                    what was analysed, what is not here, and why
 PUBLISH.md                   how to verify and publish a release
 docs/
   REA-METHOD.md              how the behaviour was established, and its limits
-  EVIDENCE/E-001 … E-012     one file per finding: claim, probe, [REA] observation
+  EVIDENCE/E-001 … E-012     one file per finding: claim, probe, [GÖZLEM] observation
   EVIDENCE/E-013             what the clean-room pass found (5 spec defects)
   EVIDENCE/E-014 … E-016     G*Power's inexact regions; its input domain; round-2 gaps
   CLI-CONTRACT.md            flags, JSON schema, exit codes
@@ -286,7 +432,7 @@ tests/
   test_cleanroom_conformance.py  the 2nd implementation, same contract
   test_spec_f13.py           each of F-13's twelve resolutions
   test_agent_offline.py      the agent loop, driven with a stub client
-  test_gpower_observed.py    [REA] the engine prints what G*Power printed
+  test_gpower_observed.py    [GÖZLEM] the engine prints what G*Power printed
   test_compliance.py         the submission rules
 cleanroom/
   src/gpower_cleanroom/      the independent 2nd implementation (Session B)

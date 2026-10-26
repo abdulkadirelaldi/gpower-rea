@@ -1,4 +1,4 @@
-"""[REA] The engine against the real G*Power 3.1.9.6.
+"""[GÖZLEM] The engine against the real G*Power 3.1.9.6.
 
 Every record in ``probes/observations/`` is a reading of G*Power's own output
 panel, made through its GUI by ``tools/rea_campaign.py``.  These tests re-run

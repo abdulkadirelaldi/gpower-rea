@@ -3,12 +3,12 @@
 | | |
 |---|---|
 | **Finding** | [F-08](../../SPEC.md#f-08--a-negative-effect-size-is-a-direction-not-an-error) |
-| **Status** | `[REA] REFUTED → CORRECTED` — v1.1's post-hoc rule refuted; observed rule implemented |
+| **Status** | `[GÖZLEM: ÇÜRÜTÜLDÜ → DÜZELTİLDİ]` — v1.1's post-hoc rule refuted; observed rule implemented |
 | **Method** | Pre-registered discriminating probes, then a sign sweep across tests and analyses |
 | **Target** | G\*Power 3.1.9.6 (macOS), `t tests`, all entries that accept a signed effect size |
 | **Probe ids** | `P-08-a…c` (pre-registered), `N-01…N-12` |
 
-## [REA] Claim
+## [GÖZLEM] Claim
 
 ```
 every probability is computed from |δ|          (power, α, β — all five analyses)
@@ -27,7 +27,7 @@ direction of the alternative. They differ by five orders of magnitude on a
 one-tailed post-hoc analysis. SPEC v1.1 chose (A) for post hoc and (B) for the
 solving analyses.
 
-## [REA] Observation — G\*Power 3.1.9.6
+## [GÖZLEM] Observation — G\*Power 3.1.9.6
 
 Pre-registered rows (predictions committed before observation):
 
@@ -68,7 +68,7 @@ negative effect size was supplied.
 
 ## Verdict
 
-**[REA] F-08 — observed.** The sign is a direction; G\*Power never computes a
+**[GÖZLEM] F-08 — observed.** The sign is a direction; G\*Power never computes a
 "wrong-way" power. All 14 rows above are reproduced in every printed field.
 
 ## Re-run

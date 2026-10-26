@@ -1,0 +1,51 @@
+{
+ "id": "Q10",
+ "question": "Hastalarımda bir tedavinin etkisini ölçmek istiyorum, orta düzey bir etki bekliyorum. Kaç kişi almalıyım?",
+ "tool_calls": [],
+ "final_answer": "Hesabı yapmadan önce iki bilgiye ihtiyacım var. Bunlar örneklem büyüklüğünü çok değiştirir, o yüzden şimdilik bir sayı vermiyorum.\n\n**1. Çalışma deseni nedir?**\n- **Aynı hastalar tedaviden önce ve sonra ölçülecek** (ön-test/son-test). Bu durumda eşleştirilmiş örneklem t testi kullanılır, etki büyüklüğü *dz* olur.\n- **İki ayrı grup karşılaştırılacak** (tedavi grubu ve kontrol/plasebo grubu, paralel kollar). Bu durumda bağımsız örneklem t testi kullanılır, etki büyüklüğü *d* olur.\n- **Tek bir grup sabit bir referans değerle karşılaştırılacak** (ör. bilinen bir normal değer). Bu durumda tek örneklem t testi kullanılır, etki büyüklüğü *d* olur.\n\n**2. \"Orta düzey etki\" sayısal olarak ne kadar?**\n\"Orta\" birçok farklı değere karşılık gelebilir ve sonuç bu değere çok bağlıdır. Şunlardan birini paylaşabilirsiniz:\n- **Standart etki büyüklüğü:** Literatürden ya da bir pilot çalışmadan biliyorsanız (ör. d = 0,5).\n- **Ham değerler:** Beklenen ortalamalar ve standart sapmalar (ör. tedavi grubunda 25 ± 8, kontrolde 30 ± 8). Ön-son ölçüm deseninde, iki ölçüm arasındaki tahmini korelasyonu da eklerseniz etki büyüklüğünü sizin için hesaplarım.\n\nAyrıca hipoteziniz yönlüyse (ör. \"tedavi skoru *düşürür*\") bunu belirtin. Belirtmezseniz şu varsayılan değerleri kullanırım: iki yönlü test, α = 0,05, güç = 0,80 ve iki grup varsa eşit grup büyüklükleri.",
+ "wall_seconds": 12.3,
+ "usage": {
+  "input_tokens": 2,
+  "cache_creation_input_tokens": 10928,
+  "cache_read_input_tokens": 11342,
+  "output_tokens": 794,
+  "output_tokens_details": {
+   "thinking_tokens": 54
+  },
+  "server_tool_use": {
+   "web_search_requests": 0,
+   "web_fetch_requests": 0
+  },
+  "service_tier": "standard",
+  "cache_creation": {
+   "ephemeral_1h_input_tokens": 10928,
+   "ephemeral_5m_input_tokens": 0
+  },
+  "inference_geo": "global",
+  "iterations": [
+   {
+    "input_tokens": 2,
+    "output_tokens": 794,
+    "cache_read_input_tokens": 11342,
+    "cache_creation_input_tokens": 10928,
+    "cache_creation": {
+     "ephemeral_5m_input_tokens": 0,
+     "ephemeral_1h_input_tokens": 10928
+    },
+    "type": "message"
+   }
+  ],
+  "speed": "standard",
+  "fallback_credit": null
+ },
+ "cost_usd": 0.1055804,
+ "num_turns": 1,
+ "model": "claude-opus-5-5",
+ "exit_code": 0,
+ "score": {
+  "family": true,
+  "params": true,
+  "answer": true,
+  "note": "no analysis called, no number given"
+ }
+}
