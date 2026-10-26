@@ -200,7 +200,7 @@ Check 7 is **unsigned** — it needs a G\*Power installation — and
 burying it.
 
 ```console
-$ python -m pytest -q                     # 850 passed
+$ python -m pytest -q                     # 851 passed
 $ gpower selftest                         # 401/401 exact N matches (rate 1.0000)
 $ python tools/compliance_check.py        # COMPLIANCE: PASS (C-1..C-5)
 $ python tools/make_vectors.py --check    # vectors are a function of the engine

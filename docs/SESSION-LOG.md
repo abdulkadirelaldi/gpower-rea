@@ -179,6 +179,6 @@ $ gpower selftest                         # 401/401 exact N
 | the two implementations are lexically independent | `test_implementations_are_lexically_independent` |
 | each of F-13's twelve resolutions | `test_spec_f13.py` |
 
-Recorded result of the last full run: **850 passed**, `COMPLIANCE: PASS`,
+Recorded result of the last full run: **851 passed**, `COMPLIANCE: PASS`,
 `selftest: 401/401 exact N matches (rate 1.0000)`,
 `judge_cleanroom: CONFORMING`.
