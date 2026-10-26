@@ -367,16 +367,48 @@ def similarity() -> dict:
     b = tokens(CLEANROOM_SRC / "gpower_cleanroom")
     shared = set(a) & set(b)
     jaccard = len(shared) / max(1, len(set(a) | set(b)))
-    private_shared = sorted(
-        t for t in shared if t.startswith("_") and len(t) > 5
+
+    def _is_meaningful_private(name: str) -> bool:
+        """A private helper name, excluding language and lexer artefacts.
+
+        `__all__`, `__future__` and friends are language, not authorship, and
+        `_000_000` is what the identifier regex makes of `10_000_000`.
+        """
+        if not name.startswith("_") or name.startswith("__"):
+            return False
+        if name.lstrip("_").replace("_", "").isdigit():
+            return False
+        return len(name) > 5
+
+    private_shared = sorted(t for t in shared if _is_meaningful_private(t))
+
+    # Shared private names whose *concept* the handover artefacts do not name.
+    # SPEC.md and INTERFACE.md were legitimately visible to Session B, so a
+    # name built from words they use (`round_half_up`, `allocation_ratio`,
+    # `Stirling`) is expected to recur and says nothing about authorship.
+    handover = ""
+    for doc in (ROOT / "SPEC.md", CLEANROOM_SRC.parent / "INTERFACE.md"):
+        if doc.is_file():
+            handover += doc.read_text(encoding="utf-8").lower()
+
+    def _explained(name: str) -> bool:
+        parts = [p for p in name.lower().strip("_").split("_") if len(p) > 2]
+        return bool(parts) and all(p in handover for p in parts)
+
+    unexplained = sorted(
+        t for t in shared if _is_meaningful_private(t) and not _explained(t)
     )
-    shared_comments = sorted(comments(SHIPPED_SRC) & comments(CLEANROOM_SRC / "gpower_cleanroom"))
+
+    shared_comments = sorted(
+        comments(SHIPPED_SRC) & comments(CLEANROOM_SRC / "gpower_cleanroom")
+    )
     return {
         "shipped_identifiers": len(a),
         "cleanroom_identifiers": len(b),
         "shared": len(shared),
         "jaccard": jaccard,
         "shared_private_helpers": private_shared,
+        "unexplained_by_handover": unexplained,
         "identical_comment_lines": shared_comments,
     }
 
@@ -476,11 +508,13 @@ def main() -> int:
     if sim:
         print()
         print("Independence check (lexical overlap with the shipped engine)")
-        print(f"  Jaccard                 : {sim['jaccard']:.3f}")
-        print(f"  shared identifiers      : {sim['shared']} "
+        print(f"  Jaccard                  : {sim['jaccard']:.3f}")
+        print(f"  shared identifiers       : {sim['shared']} "
               f"(of {sim['shipped_identifiers']} / {sim['cleanroom_identifiers']})")
-        print(f"  shared private helpers  : {sim['shared_private_helpers'] or 'none'}")
-        print(f"  identical comment lines : {len(sim['identical_comment_lines'])}")
+        print(f"  shared private helpers   : {sim['shared_private_helpers'] or 'none'}")
+        print(f"  not named in the handover: "
+              f"{sim['unexplained_by_handover'] or 'none'}")
+        print(f"  identical comment lines  : {len(sim['identical_comment_lines'])}")
     if vec["errors"]:
         print()
         print(f"Divergences ({len(vec['errors'])}):")

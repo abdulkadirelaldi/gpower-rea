@@ -139,10 +139,23 @@ def _is_fallback_rejection(exc: Exception) -> bool:
 
 
 class PowerAgent:
-    """One conversation with the model, with the MCP session held open."""
+    """One conversation with the model, with the MCP session held open.
 
-    def __init__(self, session: ClientSession, tools: Sequence[Any], *, verbose: bool):
-        self.client = AsyncAnthropic()
+    ``client`` is injectable so that the loop can be exercised without an API
+    key -- see tests/test_agent_offline.py, which drives it with a stub and
+    checks history mirroring, the tool transcript, refusal handling and the
+    fallback-degradation path.
+    """
+
+    def __init__(
+        self,
+        session: ClientSession,
+        tools: Sequence[Any],
+        *,
+        verbose: bool,
+        client: Any | None = None,
+    ):
+        self.client = client if client is not None else AsyncAnthropic()
         self.session = session
         self.tools = list(tools)
         self.verbose = verbose

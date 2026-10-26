@@ -138,6 +138,40 @@ $ gpower solve -t indep -a 0.05 -p 0.80 -e 0.5 --tails 2 --json
   "power": 0.8014596...
 ```
 
+## What is tested, and what is not
+
+Stated plainly, because an agent is the easiest component to claim works.
+
+| | status |
+|---|---|
+| compiles, imports resolve (`anthropic`, `anthropic.lib.tools.mcp`, `mcp`) | tested, CI |
+| contains no arithmetic | tested (`compliance_check.py` C-3 **and** `tests/test_agent_offline.py`) |
+| system prompt states the no-arithmetic rule, the four defaults, and the "not G\*Power" clause | tested |
+| tool-call extraction from a response | tested |
+| conversation history mirrored between turns, so follow-ups keep context | tested |
+| `stop_reason == "refusal"` reported rather than crashing on `content[0]` | tested |
+| refusal-fallback beta unavailable → degrades, retries, and does not leave the failed turn in the history | tested |
+| an unrelated API error is not swallowed by the degradation path | tested |
+| the MCP transport it uses (server as a stdio subprocess) | tested (`tests/test_mcp_stdio_e2e.py`) |
+| **run against the live Anthropic API** | **not verified** — the build machine has no credentials |
+
+The 22 offline tests in `tests/test_agent_offline.py` drive `PowerAgent.ask()`
+with a stub client, so everything except the model call itself is exercised.
+What a test cannot check is the model's *judgement* — whether it picks the
+right design from a vague description. That is governed by the system prompt,
+and the honest claim is that the prompt says the right things, not that the
+behaviour has been measured.
+
+To run it for real:
+
+```console
+$ ant auth login          # or: export ANTHROPIC_API_KEY=...
+$ python agent/agent.py -v "iki grubum var, her birinde 40 kişi, d=0.6, gücüm ne?"
+```
+
+and check the answer against the equivalent `gpower solve` command — which is
+the point of the architecture.
+
 ## Cost
 
 One typical question is 2–4 tool calls and a few thousand tokens. The tools

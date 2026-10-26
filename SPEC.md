@@ -1,10 +1,16 @@
 # SPEC.md — Behavioural specification of the G\*Power 3.1 *t tests* family
 
-**Specification version:** v1.0
+**Specification version:** v1.1
 **Target of analysis:** G\*Power 3.1.9.x, test family **`t tests`** (all six
 statistical tests in that menu)
-**Status:** frozen. This file is the *only* input the implementation session
-was allowed to read (see [docs/CLEANROOM-PROTOCOL.md](docs/CLEANROOM-PROTOCOL.md)).
+**Status:** v1.0 was frozen and handed to an independent implementation
+session as its only input (see
+[docs/CLEANROOM-PROTOCOL.md](docs/CLEANROOM-PROTOCOL.md)). That session
+reported twelve points the text did not determine, and on five of them the two
+implementations demonstrably behaved differently. **v1.1 is v1.0 plus
+[F-13](#f-13--points-the-specification-left-undetermined-now-specified),
+which closes all twelve.** F-01…F-12 are unchanged apart from the measured
+frequencies added to F-05 and F-09.
 
 ---
 
@@ -22,6 +28,7 @@ Every finding carries a status:
 | `[REA-BEHAVIOURAL]` | Established by black-box probing of the GUI; the probe, the prediction and the recorded observation live in the evidence file. |
 | `[REA-DERIVED]` | Forced by internal consistency: two or more menu entries of the same family must agree numerically, which pins the formula. The repository contains an executable test that fails if the derivation is violated. |
 | `[REA-OPEN]` | The engine implements the stated rule **and** a competing candidate rule; the evidence file specifies a probe that discriminates them, and the result slot is unfilled until an operator runs it on an installation. The CLI exposes both via `--allocation-rule`. |
+| `[SPEC-CLOSURE]` | Not a claim about G\*Power at all: a point where *this document* was too weak to determine an implementation, now specified so that two implementations of it cannot drift apart. Only F-13. |
 
 > **Why "not in the manual" matters.** Everything in §2 that carries a status
 > other than `[REA-DERIVED]` describes behaviour the G\*Power documentation
@@ -323,6 +330,47 @@ Pinned by `tests/test_effectsize.py::test_equal_n_option_uses_rms_not_pooled`.
   exactly** and powers to `5e-7`. That is the tolerance used by
   `gpower selftest` and by `gpower batch --expect`.
 
+### F-13 — Points the specification left undetermined, now specified
+`[SPEC-CLOSURE]` · evidence [E-013](docs/EVIDENCE/E-013-cleanroom-divergence.md)
+
+This finding is of a different kind from F-01…F-12: it is not a claim about
+G\*Power, it is a record of **where this specification was not strong enough
+to determine an implementation**, and what it now says instead.
+
+It exists because the clean-room pass worked. An independent implementation
+built from v1.0 of this document reported twelve points it could not resolve
+from the text; on five of them the two implementations then demonstrably
+behaved differently. Those five were specification defects, invisible to any
+amount of testing one implementation against itself.
+
+| # | undetermined in v1.0 | v1.1 says | diverged? |
+|---|---|---|---|
+| 1 | which sign rule the **compromise** analysis follows — F-08 named only three solving analyses | compromise is a solving analysis: it uses `\|δ\|` and emits the F-08 warning | **yes** — `α = 0.133` vs `0.867` |
+| 2 | whether a negative `f²` is admissible | **no**: `f²` is a squared quantity and `δ = √(f²·N)` has no real value; reject it | no (both refused) |
+| 3 | which effect size the result reports once `\|ES\|` is substituted | the **input as supplied**, signed; the value actually used is recoverable from `noncentrality`, and `warnings[]` flags the substitution. For the sensitivity analysis the field carries the answer, since there is no input to echo | **yes** |
+| 4 | the numerical endpoints of the sensitivity bisection | closed brackets: `d`, `dz` on `[1e-12, 100]`; `r` on `[1e-12, 1-1e-12]`; `f²` and generic `δ` on `[1e-12, 1e6]` | **yes** — `1e-9` vs `1e-12` |
+| 5 | the `α` bracket of the criterion analysis | bisect on **`log α`** over `[1e-300, 1-1e-15]`, and report the solution however small | **yes** — `1e-12` vs `4.2e-60` |
+| 6 | which number "critical t" holds for two tails | the single quantile that appears in F-02 (`t_{1-α/2,ν}`), signed — so it is negative for one tail with `α > 0.5` | no |
+| 7 | grid points violating F-05's minimum group sizes | skipped, not fatal: the search effectively starts at the first admissible index | no |
+| 8 | a zero effect size in a solving analysis | a validation error. With `δ = 0` the power equals `α` for every design, so no target above `α` is attainable and exhausting the search would be misleading | no (both refused) |
+| 9 | the **mode** of F-12's display rounding | half-to-even, i.e. the language default. It applies only to rendered text and never enters a search, so it cannot move an integer sample size | not observable |
+| 10 | a name for the F-09 / F-11 behaviour the interface did not expose | implementation-defined; this engine uses `allocation_rule=` and a separate effect-size module | no |
+| 11 | an inapplicable design parameter (`predictors` on a one-sample test) | **rejected**, not ignored — a silently ignored parameter is a typo that changes nothing and is never noticed | **yes** |
+| 12 | the admissible `ν` domain of the generic t test | any `ν > 0`, including `ν < 1` | no |
+
+Rows 1, 3, 4, 5 and 11 are the ones where two independent readers of v1.0
+actually diverged. Reproduce the whole table with
+
+```console
+$ python tools/probe_spec_gaps.py
+```
+
+**How to read this finding.** It is not evidence about G\*Power and claims
+nothing about it. Items 1, 3, 4, 5, 9, 10, 11 and 12 are *this engine's*
+documented conventions, chosen so that two implementations of this document
+cannot drift apart again; only a GUI probe could say whether G\*Power shares
+them. Items 2, 6, 7 and 8 follow from F-02 and F-05 and are not free choices.
+
 ---
 
 ## 3. Analysis types
@@ -333,12 +381,21 @@ All five are functions of `(ν, δ, α, k)` and the chosen solve target.
 |---|---|---|---|
 | a priori | `α`, `1-β`, ES (+ ratio) | `N` | smallest grid point with `power ≥ target` (F-05, F-06, F-09) |
 | post hoc | `α`, ES, design | `1-β` | direct evaluation of F-02 |
-| criterion | `1-β`, ES, design | `α` | bisection; power is increasing in `α` |
-| sensitivity | `α`, `1-β`, design | ES | bisection on ES over the test's admissible domain |
-| compromise | `q = β/α`, ES, design | `α`, `1-β` | bisection on the critical value (F-10) |
+| criterion | `1-β`, ES, design | `α` | bisection on **`log α`** over `[1e-300, 1-1e-15]`; power is increasing in `α` (F-13 item 5) |
+| sensitivity | `α`, `1-β`, design | ES | bisection on ES over the closed domain below |
+| compromise | `q = β/α`, ES, design | `α`, `1-β` | bisection on the critical value (F-10); uses `\|δ\|` (F-13 item 1) |
 
-Admissible effect-size domains for the bisection: `d`, `dz` in `(0, 100]`;
-`r` in `(0, 1)`; `f²` in `(0, 1e6]`; generic `δ` in `(0, 1e6]`.
+Closed effect-size brackets for the sensitivity bisection (F-13 item 4):
+`d`, `dz` on `[1e-12, 100]`; `r` on `[1e-12, 1-1e-12]`; `f²` and generic `δ`
+on `[1e-12, 1e6]`. If the target power is unattainable at the upper end, the
+analysis fails rather than returning the endpoint; if it is already attained at
+the lower end, the lower end is returned.
+
+A **zero** effect size is a validation error for the a-priori, criterion and
+compromise analyses, and admissible for post hoc (which returns exactly `α`)
+and for sensitivity (F-13 item 8). An **inapplicable** design parameter —
+`predictors` on a one-sample test, `df` on anything but the generic test — is
+rejected, not ignored (F-13 item 11).
 
 *Generic t test* supplies `ν` and `δ` directly, so `N` has no meaning for it
 and the a-priori analysis is not offered — matching the GUI, which greys the
@@ -355,30 +412,73 @@ brackets are what the reference implementation in this repository achieves
 | quantity | required | achieved |
 |---|---|---|
 | `T(x; ν)` | 1e-11 absolute | 2.9e-14 |
-| `t_{p,ν}` for `p ∈ [0.5, 1)` | 1e-10 relative | 3.8e-15 |
-| `T(x; ν, δ)` | 1e-10 absolute | 1.7e-14 |
-| quadrature mass closure | 1e-10 | 2.1e-14 |
+| critical value `t_{1-α,ν}` | 1e-10 relative | 1.0e-14 |
+| `T(x; ν, δ)`, `ν ≥ 1` | 1e-10 absolute | 1.5e-14 |
+| `T(x; ν, δ)`, `0 < ν < 1` | 1e-8 absolute | 6.7e-16 |
+| size of a two-sided test at `δ = 0` | 1e-9 **relative**, down to `α = 1e-12` | 1.8e-13 |
+| quadrature mass closure, `ν ∈ [0.01, 1e6]` | 1e-10 | 9.0e-15 |
 
-Two cautions for the implementer:
+Five things decide whether an implementation reaches that table. Each one was
+found the hard way, and four of them are **cancellation**: the arithmetic is
+textbook, and the error comes entirely from *which algebraically equivalent
+form* you evaluate.
 
-1. **The noncentral *t* CDF is best evaluated as a mixture, not a series.**
-   With `Z ~ N(0,1)` independent of `V ~ χ²_ν`, `T = (Z + δ)/√(V/ν)`, hence
+1. **Evaluate the noncentral *t* CDF as a mixture, not a series.** With
+   `Z ~ N(0,1)` independent of `V ~ χ²_ν` and `T = (Z + δ)/√(V/ν)`,
 
    ```
    T(x; ν, δ) = E_S[ Φ(x·S - δ) ],   S = sqrt(V/ν)
    ```
 
-   The integrand is smooth and unimodal; Gauss-Legendre on panels delimited by
-   χ² quantiles converges to machine precision for every `ν ≥ 1`.
+   The classical series (AS 243) degrades for large `|δ|`, which is exactly
+   where a-priori analyses live.
 
-2. **Beware cancellation in `log Γ` differences.** `lgamma(a+b) - lgamma(a)`
+2. **Integrate in `y = log s`, not in `s`.** With `a = ν/2` the mixing density
+   becomes
+
+   ```
+   log h(y) = L0 - a·(expm1(2y) - 2y)
+   ```
+
+   which puts the mode at `y = 0` for **every** `ν > 0`, turns the `s^(ν-1)`
+   endpoint singularity into an entire function, and leaves every term in the
+   exponent `O(1)`. In `s` space the singularity is integrable but
+   unresolvable by Gauss-Legendre below `ν = 1`: the measured two-sided size
+   came out `0.252` where `α` was `0.100`. Not a tolerance failure — a wrong
+   answer.
+
+3. **Give `Φ`'s turn its own panel edges.** The integrand is `Φ(x·e^y - δ)`
+   times a smooth density. `Φ` is flat outside roughly `±8` and turns sharply
+   inside it, and for a large critical value that turn sits far out in the
+   density's left tail. If it falls inside one wide panel, Gauss-Legendre
+   cannot see it: this alone accounted for `2.8e-4` of error at `ν = 0.05`.
+   Add breakpoints where `x·e^y - δ` crosses `0, ±1, ±2, ±4, ±8`.
+
+4. **Compute the survival function directly, never as `1 - CDF`.**
+   `P(T > x) = E_S[Φ(δ - x·S)]` is a sum of positive terms. Power *is* this
+   quantity (F-02), and it is genuinely small in places the engine reaches —
+   a one-tailed test pointed the wrong way has power `7.7e-06`. Subtracting
+   from 1 keeps absolute accuracy and throws away relative accuracy: the
+   measured size at `α = 1e-12` was off by `6e-04` **relative** that way, and
+   by `1.8e-13` this way.
+
+5. **Take the critical value from the tail probability.**
+   `t_{1-α/2,ν}` must be obtained as the upper `α/2` quantile, not as the
+   `1-α/2` quantile: forming `1 - α/2` destroys every significant digit of a
+   small `α` and rounds to exactly `1.0` below about `1e-16`. The criterion
+   analysis of §3 reaches `α ~ 1e-60` routinely. Relatedly, the survival
+   function must not square its argument when `|t| > 1e120` — it overflows,
+   after which everything downstream is silently garbage, and the quantile
+   search returns a plausible wrong number instead of failing.
+
+And the one that is not about distributions at all:
+
+6. **Beware cancellation in `log Γ` differences.** `lgamma(a+b) - lgamma(a)`
    subtracts two numbers of size `a·ln a`; at `ν = 5000` that injects `~2e-12`
-   of error into an exponent and therefore into the result. Rewriting the
-   Stirling series so every term is `O(1)` removes it. Likewise, never recover
-   `1 - x` by subtraction when `x = ν/(ν+t²)` approaches 1 — pass the
-   complement `t²/(ν+t²)` explicitly. Both corrections are worth ~1.5 orders
-   of magnitude each and are the difference between passing and failing the
-   table above.
+   of error into an exponent and hence into the result. Rewrite the Stirling
+   series so every term is `O(1)`. Likewise never recover `1 - x` by
+   subtraction when `x = ν/(ν+t²)` approaches 1 — pass the complement
+   `t²/(ν+t²)` explicitly.
 
 ---
 

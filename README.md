@@ -115,7 +115,10 @@ $ python agent/agent.py "40 kişilik iki grubum var, d=0.6 ile gücüm ne?"
 Claude Opus 5 over the MCP server. Its system prompt forbids it from stating
 any number that did not come back from a tool call, and
 `tools/compliance_check.py` fails the build if the agent file contains
-arithmetic at all. See [agent/README.md](agent/README.md).
+arithmetic at all. The loop — tool-call extraction, history mirroring,
+refusal handling, fallback degradation — is covered by 22 offline tests;
+**the live API call is not verified** (no credentials on the build machine),
+and [agent/README.md](agent/README.md) says exactly which rows are which.
 
 ---
 
@@ -139,11 +142,17 @@ settle:
 | [F-10](SPEC.md#f-10--compromise-analysis-is-defined-on-the-critical-value) | compromise analysis solves for the critical value | derived |
 | [F-11](SPEC.md#f-11--the-effect-size-drawer-offers-two-pooled-sds-and-the-equal-n-one-is-an-rms) | **the equal-*n* pooling option is an RMS, not a pooled SD** — 49 % difference in required `N` on a realistic example | open |
 | [F-12](SPEC.md#f-12--boundary-behaviour-and-reported-precision) | no epsilon slack at the boundary; display rounding is display only | open |
+| [F-13](SPEC.md#f-13--points-the-specification-left-undetermined-now-specified) | **twelve points `SPEC.md` v1.0 did not determine** — found by implementing it twice; five of them were live divergences | spec closure |
 
 Read [SPEC.md](SPEC.md) for the specification,
-[docs/EVIDENCE/](docs/EVIDENCE/) for the twelve evidence files, and
+[docs/EVIDENCE/](docs/EVIDENCE/) for the thirteen evidence files, and
 [docs/REA-METHOD.md](docs/REA-METHOD.md) for the method — in particular, why
 every probe is built around *competing predictions* rather than observations.
+
+F-13 is the odd one out: it is not a claim about G\*Power but a defect report
+against *this* specification, produced by handing v1.0 to an independent agent
+session that could not see the code
+([docs/CLEANROOM-PROTOCOL.md](docs/CLEANROOM-PROTOCOL.md)).
 
 ---
 
@@ -157,23 +166,40 @@ installation at all:
 | 1 | 401 reference vectors, exact integer `N` | **401 / 401** |
 | 2 | independent re-derivation: SciPy + brute-force linear search, from `SPEC.md` | **401 / 401**, post-hoc power within `1e-10` |
 | 3 | an implementation written by *other people* (`statsmodels`) | agrees, **including the far-tail term of F-02** — so that formula is what two unrelated implementations arrived at |
-| 4 | property tests: monotonicity, minimality, five-way round trips, three cross-entry identities | all pass, no golden values involved |
-| 5 | arbitration by a 50-digit `mpmath` computation wherever the engine and a library disagree | engine `3.8e-15` vs SciPy `7.9e-11`; statsmodels is off by up to `7.2e-5` near power 1 vs the engine's `1.2e-11`. **Two numerical defects in the engine were found and fixed this way** |
-| 6 | 36-row GUI probe worksheet with pre-registered competing predictions | generated and runnable, **0 rows observed** |
+| 4 | **a second implementation of `SPEC.md`, written clean-room by an agent that never saw the code** | **CONFORMING** — 401/401, every SPEC property, 300/300 on a cross-implementation grid, lexical overlap `0.204`, **and it found 5 specification defects** |
+| 5 | property tests: monotonicity, minimality, five-way round trips, three cross-entry identities | all pass, no golden values involved |
+| 6 | arbitration by a 50-digit `mpmath` computation wherever the engine and a library disagree | engine `3.8e-15` vs SciPy `7.9e-11`; statsmodels off by up to `7.2e-5` near power 1 vs the engine's `1.2e-11`. **Six numerical defects in the engine were found and fixed this way** |
+| 7 | 36-row GUI probe worksheet with pre-registered competing predictions | generated and runnable, **0 rows observed** |
 
-The rule the project settled on: *a second implementation settles what the
-answer is; only a higher-precision computation settles who is right.*
+Check 4 is the one that paid: five places where two competent readers of the
+same document produced different numbers, **one of them a genuine wrong
+answer** — the criterion analysis returned its own bracket floor of `1e-12`
+where the honest answer was `4.2e-60`. No amount of testing the engine against
+itself could have found it, because every test either round-tripped through the
+same bisection or compared against a reference using the same bracket. The
+clean room also brought three numerical improvements the engine adopted, one of
+which turned a *wrong answer* below `ν = 1` (a two-sided size of `0.252` where
+`α` was `0.100`) into `6.7e-16`.
+
+Two rules the project settled on:
+
+* *A second implementation settles what the answer is; only a
+  higher-precision computation settles who is right.*
+* *A specification is only as strong as the weakest thing it failed to say.*
+  SPEC v1.1 exists because v1.0 was implemented twice and the results differed.
 
 Numbers, grids and tolerances in [docs/VALIDATION.md](docs/VALIDATION.md).
-Check 6 is **unsigned** — it needs a G\*Power installation — and
+Check 7 is **unsigned** — it needs a G\*Power installation — and
 [docs/SESSION-LOG.md](docs/SESSION-LOG.md) says so in a table rather than
 burying it.
 
 ```console
-$ python -m pytest -q                     # 698 passed
+$ python -m pytest -q                     # 850 passed
 $ gpower selftest                         # 401/401 exact N matches (rate 1.0000)
-$ python tools/compliance_check.py        # COMPLIANCE: PASS (C-1..C-4)
+$ python tools/compliance_check.py        # COMPLIANCE: PASS (C-1..C-5)
 $ python tools/make_vectors.py --check    # vectors are a function of the engine
+$ python tools/judge_cleanroom.py         # VERDICT: CONFORMING
+$ python tools/probe_spec_gaps.py         # the 12 underspecified regions
 ```
 
 ---
@@ -210,6 +236,7 @@ PUBLISH.md                   how to get this onto GitHub (git is not installed h
 docs/
   REA-METHOD.md              how the behaviour was established, and its limits
   EVIDENCE/E-001 … E-012     one file per finding: claim, probe, predictions
+  EVIDENCE/E-013             what the clean-room pass found (5 spec defects)
   CLI-CONTRACT.md            flags, JSON schema, exit codes
   ARCHITECTURE.md            the one-engine rule and how it is enforced
   VALIDATION.md              measured evidence, with the gaps named
@@ -230,6 +257,7 @@ tools/
   harvest.py                 stamp observations into a verdict per finding
   make_vectors.py            regenerate / verify the vector file
   judge_cleanroom.py         hold the independent 2nd implementation to the contract
+  probe_spec_gaps.py         probe the 12 regions SPEC.md v1.0 left undetermined
   compliance_check.py        the submission rules, as a machine check
   publish.ps1                verify, commit and push (refuses if the gate fails)
 probes/
@@ -247,8 +275,14 @@ tests/
   test_mcp_stdio_e2e.py      the server as a real subprocess over stdio
   test_effectsize.py         both pooling options (F-11)
   test_cleanroom_conformance.py  the 2nd implementation, same contract
+  test_spec_f13.py           each of F-13's twelve resolutions
+  test_agent_offline.py      the agent loop, driven with a stub client
   test_compliance.py         the submission rules
-cleanroom/src/gpower_cleanroom/  the independent 2nd implementation (Session B)
+cleanroom/
+  src/gpower_cleanroom/      the independent 2nd implementation (Session B)
+  SPEC-GAPS.md               the 12 gaps it reported against SPEC.md v1.0
+  selfcheck.py               its own 56 self-checks
+  SPEC.md, INTERFACE.md      exactly what it was allowed to read
 ```
 
 ---

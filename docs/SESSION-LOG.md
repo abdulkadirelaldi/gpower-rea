@@ -22,9 +22,15 @@ difference between *done* and *ready to be done*.
 | 9b | Agreement oracle written by other people (`statsmodels`) | `tests/test_reference_statsmodels.py`; independently confirms the F-02 far-tail term | done |
 | 10 | Arbitration by a 50-digit computation wherever a library disagreed | two numerical defects in the engine found and fixed; twice the library was the less accurate party | done |
 | 11 | Interfaces — CLI, MCP server, agent | `cli.py`, `mcp_server.py`, `agent/agent.py` | done |
+| 11b | Agent loop tested offline against a stub client | `tests/test_agent_offline.py`, 22 tests | done |
+| 11c | **Agent run against the live Anthropic API** | — | **NOT VERIFIED — no credentials on the build machine** |
 | 12 | Compliance automation | `tools/compliance_check.py` in CI | done |
 | 13 | **GUI probe execution** | `probes/REA-RESULTS.md` | **PENDING — 36 rows unobserved** |
-| 14 | **Two-session clean-room attestation** | the table below | **UNSIGNED** |
+| 14 | Two-session clean-room implementation | `cleanroom/`, 12-gap report | done |
+| 15 | Clean-room conformance judgement | `tools/judge_cleanroom.py` — **CONFORMING**, 401/401 | done |
+| 16 | Gap divergence probe | `tools/probe_spec_gaps.py` — 5 live defects found | done |
+| 17 | Specification repair round 2 | `SPEC.md` v1.0 → v1.1 (F-13), engine 1.0.0 → 1.1.0 | done |
+| 18 | Numerics overhaul driven by (16) | log-scale quadrature, Φ-transition panels, `nct_sf`, `t_isf` | done |
 
 ---
 
@@ -63,26 +69,79 @@ and the canonical published example is reproduced to all seven printed decimals
 
 ---
 
-## Attestation 2 — two separate sessions
+## Attestation 1b — the agent against the live API
 
-`SPEC.md` was written before the engine and frozen, and the engine traces only
-to `SPEC.md` findings (machine checked, `compliance_check.py` C-4). The
-*procedural* separation into two independent agent sessions has not been
-executed.
+Everything around the model call is tested (22 offline tests driving the loop
+with a stub client, plus the stdio transport end-to-end). The model call
+itself is not: the build machine has no Anthropic credentials, so
+`python agent/agent.py "..."` has never been executed here.
 
 | field | value |
 |---|---|
-| Session A branch / commit | _unsigned_ |
-| Session B branch / commit | _unsigned_ |
-| Handover artefact | `SPEC.md` v1.0 (frozen) |
-| Session B inputs withheld | `src/gpower_rea/`, `docs/EVIDENCE/`, `probes/` |
-| `pytest` result on Session B's implementation | _unsigned_ |
-| `gpower selftest` result on Session B's implementation | _unsigned_ |
-| Date | _unsigned_ |
+| Model configured | `claude-opus-5`, adaptive thinking, effort `high` |
+| SDK surface verified | `client.beta.messages.tool_runner` accepts `system`, `thinking`, `output_config`, `betas`, `fallbacks`; the runner is async-iterable and exposes `generate_tool_call_response` |
+| MCP transport verified | yes — `tests/test_mcp_stdio_e2e.py` spawns the server and round-trips a tool call |
+| Live API call | _not run_ |
+| Sample transcript | _not captured_ |
 
-**To sign:** follow
-[CLEANROOM-PROTOCOL §6](CLEANROOM-PROTOCOL.md#6-executing-and-signing-the-two-session-pass)
-and fill in the table.
+**To sign:** `ant auth login` (or export `ANTHROPIC_API_KEY`), then
+
+```console
+$ python agent/agent.py -v "iki grubum var, her birinde 40 kişi, d=0.6, gücüm ne?"
+$ gpower solve -t indep -s power -a 0.05 -e 0.6 --n1 40 --n2 40 --json
+```
+
+and paste both outputs here. The second command is the point: the agent's
+number must be reproducible through a different code path.
+
+---
+
+## Attestation 2 — two separate sessions · **SIGNED**
+
+| field | value |
+|---|---|
+| Handover artefact | `SPEC.md` **v1.0**, frozen at commit `aad154e`, tag `spec-frozen-v1.0` |
+| Session A (analysis + spec) | this session; produced `SPEC.md` v1.0 and `docs/EVIDENCE/E-001…E-012` |
+| Session B (implementation) | a separate agent session, launched with only `cleanroom/SPEC.md` and `cleanroom/INTERFACE.md` in its working directory |
+| Inputs withheld from Session B | `src/gpower_rea/`, `docs/EVIDENCE/`, `probes/`, `tests/`, `src/gpower_rea/data/public_vectors.csv`, the G\*Power application and its manual, the web |
+| Session B deliverables | [`cleanroom/src/gpower_cleanroom/`](../cleanroom/src/gpower_cleanroom/) (7 modules), [`cleanroom/selfcheck.py`](../cleanroom/selfcheck.py) (56 self-checks), [`cleanroom/SPEC-GAPS.md`](../cleanroom/SPEC-GAPS.md) (12 gaps) |
+| Third-party imports in Session B's code | **none** — standard library only, asserted by `test_no_third_party_imports` |
+| **Conformance verdict** | **CONFORMING** — 401/401 exact `N`, 401/401 powers within `5e-7`, all 7 SPEC properties, all 4 round trips, 300/300 on the cross-implementation grid |
+| Independence (lexical overlap) | Jaccard **0.204**; shared private helpers `_SQRT2`, `_STIRLING_MIN`; **0** identical comment lines |
+| Specification defects found | **12 reported, 5 live** (`G-01`, `G-03`, `G-04`, `G-05`, `G-11`) |
+| Of those, a wrong answer in the shipped engine | **1** — `G-05`, the criterion analysis returned `1e-12` where the answer was `4.2e-60` |
+| Numerical defects adopted from Session B's approach | **3** — log-scale quadrature, Φ-transition panels, direct survival function (defects 3–5 in [VALIDATION §3.3](VALIDATION.md)) |
+| Outcome | `SPEC.md` v1.0 → **v1.1** (F-13 closes all twelve points); engine 1.0.0 → **1.1.0** |
+| Verified by | `python tools/judge_cleanroom.py`, `python tools/probe_spec_gaps.py`, `tests/test_cleanroom_conformance.py` (17 tests), `tests/test_spec_f13.py` |
+
+### What the exercise actually bought
+
+Not a second opinion — a set of defects that were structurally invisible
+without it:
+
+* **One wrong answer.** `G-05`. Every test the engine had either round-tripped
+  through its own bisection or compared against a reference that used the same
+  bracket, so the floor-return was self-consistent and undetectable.
+* **Three numerical improvements.** Session B reparametrised the quadrature to
+  `y = log s` and computed the survival function directly. Both were better,
+  and adopting them turned a *wrong answer* below `ν = 1` (size `0.252` where
+  `α` was `0.100`) into `6.7e-16`, and gave relative — not merely absolute —
+  accuracy for a small power.
+* **Four latent ambiguities** that had not bitten yet but would have, in any
+  third implementation.
+
+### Honest caveats
+
+* The boundary was enforced by the handover prompt plus a physically separate
+  input directory, **not** by a sandbox. It is verified after the fact by the
+  lexical-overlap report above, which is evidence rather than proof.
+* Session B implemented v1.0. Three of the five divergences are closed in
+  v1.1 by *stating this engine's convention*, which the clean room had no way
+  to know. Those are documentation fixes, not bugs on either side, and F-13
+  labels them as choices.
+* None of this is evidence about G\*Power. It is evidence that the
+  specification is now strong enough to be implemented twice with the same
+  result — which is a different and more modest claim.
 
 ---
 
@@ -114,7 +173,10 @@ $ gpower selftest                         # 401/401 exact N
 | the MCP server works as a real stdio subprocess | `test_mcp_stdio_e2e.py` |
 | CLI contract (exit codes, schema, batch aliasing) | `test_cli.py` |
 
-Recorded result of the last full run: **698 passed, 1 skipped**,
-`COMPLIANCE: PASS`, `selftest: 401/401 exact N matches (rate 1.0000)`.
-The skip is the clean-room conformance file, which runs only when a second
-implementation is present.
+| the clean-room implementation conforms to the same contract | `test_cleanroom_conformance.py`, `tools/judge_cleanroom.py` |
+| the two implementations are lexically independent | `test_implementations_are_lexically_independent` |
+| each of F-13's twelve resolutions | `test_spec_f13.py` |
+
+Recorded result of the last full run: **850 passed**, `COMPLIANCE: PASS`,
+`selftest: 401/401 exact N matches (rate 1.0000)`,
+`judge_cleanroom: CONFORMING`.

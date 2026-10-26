@@ -39,8 +39,8 @@ __all__ = [
     "SOLVE_MODES",
 ]
 
-ENGINE_VERSION = "1.0.0"
-SPEC_VERSION = "SPEC.md v1.0"
+ENGINE_VERSION = "1.1.0"
+SPEC_VERSION = "SPEC.md v1.1"
 
 SOLVE_MODES = ("n", "power", "alpha", "effect-size", "compromise")
 
@@ -87,6 +87,12 @@ def _norm_solve(text: str) -> str:
 
 #: Hard ceiling on the a-priori search so a pathological request terminates.
 N_SEARCH_CAP = 10_000_000
+
+#: Closed bracket for the criterion analysis (SPEC F-13).  The search runs on
+#: log(alpha), so the lower end costs nothing and a genuinely tiny answer is
+#: reported rather than clipped to a round number.
+ALPHA_SEARCH_MIN = 1e-300
+ALPHA_SEARCH_MAX = 1.0 - 1e-15
 
 
 class NoSolutionError(RuntimeError):
@@ -185,15 +191,36 @@ def _power_from_ncp(alpha: float, df: float, ncp: float, tails: int) -> tuple[fl
     -- is detectable: at ncp = 0 the correct formula returns exactly alpha,
     the truncated one returns alpha/2.  See evidence E-002.
     """
+    # The critical value is obtained as -t_ppf(tail), not t_ppf(1 - tail).
+    # Central t is symmetric, so the two are equal in exact arithmetic -- but
+    # `1 - alpha` loses every significant digit of a tiny alpha (at
+    # alpha = 1e-300, `1 - alpha/2` rounds to exactly 1.0 and the quantile
+    # call fails outright).  The criterion analysis routinely reaches that
+    # regime: see SPEC F-13 item 5.
+    try:
+        if tails == 1:
+            t_crit = nm.t_isf(alpha, df)
+        elif tails == 2:
+            t_crit = nm.t_isf(0.5 * alpha, df)
+        else:
+            raise ValidationError(f"tails must be 1 or 2, got {tails!r}")
+    except ValueError as exc:
+        if isinstance(exc, ValidationError):
+            raise
+        raise ValidationError(
+            f"the critical value for alpha={alpha!r}, df={df!r}, "
+            f"tails={tails} is not representable: {exc}"
+        ) from None
+
+    # Both terms come from a survival/CDF pair that is computed directly, so
+    # the sum is of positive quantities.  Writing the first term as
+    # `1 - nct_cdf(t_crit)` would keep only absolute accuracy, and power is
+    # genuinely tiny in two places the engine reaches: a one-tailed test
+    # pointed the wrong way (7.7e-06) and the size of a test at alpha = 1e-12.
+    upper = nm.nct_sf(t_crit, df, ncp)
     if tails == 1:
-        t_crit = nm.t_ppf(1.0 - alpha, df)
-        return 1.0 - nm.nct_cdf(t_crit, df, ncp), t_crit
-    if tails == 2:
-        t_crit = nm.t_ppf(1.0 - 0.5 * alpha, df)
-        upper = 1.0 - nm.nct_cdf(t_crit, df, ncp)
-        lower = nm.nct_cdf(-t_crit, df, ncp)
-        return upper + lower, t_crit
-    raise ValidationError(f"tails must be 1 or 2, got {tails!r}")
+        return upper, t_crit
+    return upper + nm.nct_cdf(-t_crit, df, ncp), t_crit
 
 
 def _beta_and_alpha(c: float, df: float, ncp: float, tails: int) -> tuple[float, float]:
@@ -212,6 +239,22 @@ def _validate_common(alpha: float | None, tails: int) -> None:
         raise ValidationError(f"tails must be 1 or 2, got {tails!r}")
     if alpha is not None and not (0.0 < alpha < 1.0):
         raise ValidationError(f"alpha must be in (0,1), got {alpha!r}")
+
+
+def _require_nonzero_effect_size(effect_size: float, solve_for: str) -> None:
+    """A zero effect size makes three of the five analyses meaningless.
+
+    With delta = 0 the power of F-02 equals alpha for every N and every alpha,
+    so no finite design and no admissible alpha can reach a target power above
+    alpha.  Refuse up front instead of exhausting a 10-million-step search
+    (SPEC F-13 / G-08).
+    """
+    if effect_size == 0.0:
+        raise ValidationError(
+            f"solve={solve_for} is undefined for a zero effect size: with "
+            f"delta = 0 the power equals alpha for every design, so no target "
+            f"above alpha is attainable (SPEC F-13)"
+        )
 
 
 def power(
@@ -475,6 +518,7 @@ def solve(
             )
         if not (0.0 < power_target < 1.0):
             raise ValidationError("power must be in (0,1)")
+        _require_nonzero_effect_size(effect_size, "n")
         proc.check_effect_size(effect_size)
         es_eff = abs(effect_size)
         if effect_size < 0:
@@ -551,6 +595,7 @@ def solve(
             raise ValidationError("solve=alpha requires power and effect-size")
         if not (0.0 < power_target < 1.0):
             raise ValidationError("power must be in (0,1)")
+        _require_nonzero_effect_size(effect_size, "alpha")
         proc.check_effect_size(effect_size)
         sample = _explicit_sample(
             proc, ex, n=n, n1=n1, n2=n2, ratio=allocation_ratio
@@ -558,12 +603,28 @@ def solve(
         df = proc.df(sample, ex)
         if df <= 0:
             raise ValidationError("sample size too small (df <= 0)")
-        ncp = proc.ncp(sample, effect_size, ex)
+        ncp = proc.ncp(sample, abs(effect_size), ex)
+        if effect_size < 0:
+            warnings.append(
+                "negative effect size: |ES| used for the directional search "
+                "(SPEC F-08)"
+            )
 
-        def pw_of_alpha(a: float) -> float:
-            return _power_from_ncp(a, df, ncp, tails)[0]
+        # Bisect on log(alpha), not alpha.  The honest answer can be
+        # astronomically small -- a large effect at a large N needs
+        # alpha ~ 4e-60 to bring power down to 0.05 -- and a linear bracket
+        # floored at 1e-12 silently returns the floor instead.  This was a
+        # real defect, found by the clean-room pass (SPEC F-13 / G-05).
+        def pw_of_log_alpha(la: float) -> float:
+            return _power_from_ncp(math.exp(la), df, ncp, tails)[0]
 
-        a_star = _bisect_scalar(pw_of_alpha, 1e-12, 1.0 - 1e-12, power_target)
+        la = _bisect_scalar(
+            pw_of_log_alpha,
+            math.log(ALPHA_SEARCH_MIN),
+            math.log(ALPHA_SEARCH_MAX),
+            power_target,
+        )
+        a_star = min(max(math.exp(la), ALPHA_SEARCH_MIN), ALPHA_SEARCH_MAX)
         pw, t_crit = _power_from_ncp(a_star, df, ncp, tails)
         pt = PowerPoint(pw, a_star, df, ncp, t_crit, tails, sample)
         return _build_result(
@@ -618,12 +679,22 @@ def solve(
         )
     if beta_alpha_ratio <= 0:
         raise ValidationError("beta-alpha-ratio must be > 0")
+    _require_nonzero_effect_size(effect_size, "compromise")
     proc.check_effect_size(effect_size)
     sample = _explicit_sample(proc, ex, n=n, n1=n1, n2=n2, ratio=allocation_ratio)
     df = proc.df(sample, ex)
     if df <= 0:
         raise ValidationError("sample size too small (df <= 0)")
+    # SPEC F-13 / G-01: compromise is a *solving* analysis, so like the other
+    # three it works from |delta|.  SPEC v1.0 listed only three analyses in
+    # F-08 and left compromise unassigned; two independent readers then chose
+    # differently (alpha = 0.133 vs 0.867 on the same input).
     ncp = proc.ncp(sample, abs(effect_size), ex)
+    if effect_size < 0:
+        warnings.append(
+            "negative effect size: |ES| used for the directional search "
+            "(SPEC F-08)"
+        )
 
     def ratio_of_c(c: float) -> float:
         beta, a = _beta_and_alpha(c, df, ncp, tails)

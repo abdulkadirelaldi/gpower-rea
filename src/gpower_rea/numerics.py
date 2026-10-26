@@ -29,7 +29,10 @@ __all__ = [
     "t_cdf",
     "t_pdf",
     "t_ppf",
+    "t_sf",
+    "t_isf",
     "nct_cdf",
+    "nct_sf",
 ]
 
 _SQRT2 = math.sqrt(2.0)
@@ -271,10 +274,131 @@ def t_pdf(t: float, df: float) -> float:
     return math.exp(lg - 0.5 * (df + 1.0) * math.log1p(t * t / df))
 
 
+#: Above this, t*t overflows a double (sqrt(DBL_MAX) is about 1.34e154), so
+#: the survival function switches to its asymptotic form.
+_T_SQUARE_SAFE = 1e120
+
+
+def _log_t_sf_asymptotic(t: float, df: float) -> float:
+    """log P(T > t) for t so large that t*t is not representable.
+
+    With x = df/(df+t^2) small, I_x(a, b) -> x^a / (a * B(a, b)), so
+
+        log P(T > t) = (df/2)*(log df - 2 log t) - log df - log B(df/2, 1/2)
+
+    The relative error of dropping the next term is O(df/t^2), i.e. below
+    1e-200 at the threshold where this branch is used.
+    """
+    return (
+        0.5 * df * (math.log(df) - 2.0 * math.log(t))
+        - math.log(df)
+        - log_beta(0.5 * df, 0.5)
+    )
+
+
+def t_sf(t: float, df: float) -> float:
+    """Survival function P(T > t) of the central Student t distribution.
+
+    Computed from the tail directly, and with an asymptotic branch for huge
+    ``t``: squaring 1e200 overflows, after which every downstream quantity is
+    silently garbage.  That mattered -- it made ``t_isf`` return a
+    plausible-looking wrong quantile for a tiny tail probability with small
+    ``df``.
+    """
+    if df <= 0.0:
+        raise ValueError("t_sf: df must be > 0")
+    if t == 0.0:
+        return 0.5
+    if abs(t) > _T_SQUARE_SAFE:
+        lg = _log_t_sf_asymptotic(abs(t), df)
+        tail = math.exp(lg) if lg > -745.0 else 0.0
+        return tail if t > 0.0 else 1.0 - tail
+    tt = t * t
+    denom = df + tt
+    tail = 0.5 * betainc_xy(0.5 * df, 0.5, df / denom, tt / denom)
+    return tail if t > 0.0 else 1.0 - tail
+
+
+def t_isf(q: float, df: float) -> float:
+    """Upper-tail quantile: the t with P(T > t) = q.
+
+    This, not :func:`t_ppf`, is the right-conditioned way to obtain a critical
+    value.  ``t_ppf(1 - alpha/2)`` has to form ``1 - alpha/2``, which loses
+    every significant digit of a small alpha and rounds to exactly 1.0 below
+    about 1e-16 -- and the criterion analysis reaches alpha ~ 1e-60 routinely
+    (SPEC F-13 item 5).  Working from the tail probability never forms that
+    difference.
+    """
+    if not (0.0 < q < 1.0):
+        raise ValueError(f"t_isf: q must be in (0,1), got {q!r}")
+    if df <= 0.0:
+        raise ValueError("t_isf: df must be > 0")
+    if q == 0.5:
+        return 0.0
+    if q > 0.5:
+        # 1 - q is well conditioned here: q > 0.5 means it keeps full
+        # relative precision.
+        return -t_isf(1.0 - q, df)
+
+    # Starting point.  Inverting the asymptotic tail is the only thing that
+    # gets close when q is tiny and df is small -- there the quantile is
+    # enormous (df = 0.05, q = 0.025 puts it near 1e26) and a Cornish-Fisher
+    # expansion around the normal quantile is nowhere near.
+    log_asym = (
+        0.5 * (math.log(df) - (2.0 / df) * (math.log(q) + math.log(df)
+                                            + log_beta(0.5 * df, 0.5)))
+    )
+    if log_asym > 709.0:
+        raise ValueError(
+            f"t_isf: the upper q={q!r} quantile of t with df={df!r} exceeds "
+            f"the range of a double (it is about exp({log_asym:.1f}))"
+        )
+    z = -norm_ppf(q)
+    z3, z5, z7 = z**3, z**5, z**7
+    cf = (
+        z
+        + (z3 + z) / (4.0 * df)
+        + (5.0 * z5 + 16.0 * z3 + 3.0 * z) / (96.0 * df * df)
+        + (3.0 * z7 + 19.0 * z5 + 17.0 * z3 - 15.0 * z) / (384.0 * df**3)
+    )
+    asym = math.exp(log_asym) if log_asym < 709.0 else math.inf
+    # The asymptotic form is the better guess once it exceeds the
+    # Cornish-Fisher one, which is exactly the regime it is meant for.
+    t = max(cf, 1e-6) if cf >= asym else asym
+
+    lo, hi = 0.0, max(2.0 * t, 2.0)
+    while t_sf(hi, df) > q:
+        hi *= 2.0
+        if hi > 1e300:
+            raise ValueError(
+                f"t_isf: the upper q={q!r} quantile of t with df={df!r} "
+                f"exceeds the range of a double"
+            )
+    if not (lo < t < hi):
+        t = 0.5 * (lo + hi)
+
+    for _ in range(200):
+        f = t_sf(t, df) - q
+        if f < 0.0:
+            hi = t
+        else:
+            lo = t
+        d = t_pdf(t, df)
+        nxt = t + f / d if d > 0.0 else 0.5 * (lo + hi)
+        if not (lo < nxt < hi):
+            nxt = 0.5 * (lo + hi)
+        if abs(nxt - t) <= 1e-15 * max(1.0, abs(t)):
+            return nxt
+        t = nxt
+    return t
+
+
 def t_ppf(p: float, df: float) -> float:
     """Quantile of the central Student t distribution.
 
-    Cornish-Fisher start, then safeguarded Newton (bisection fallback).
+    Cornish-Fisher start, then safeguarded Newton (bisection fallback).  For a
+    critical value prefer :func:`t_isf`, which takes the tail probability and
+    so stays accurate for a tiny alpha.
     """
     if not (0.0 < p < 1.0):
         raise ValueError(f"t_ppf: p must be in (0,1), got {p!r}")
@@ -283,7 +407,7 @@ def t_ppf(p: float, df: float) -> float:
     if p == 0.5:
         return 0.0
     if p < 0.5:
-        return -t_ppf(1.0 - p, df)
+        return -t_isf(p, df)
 
     z = norm_ppf(p)
     z3, z5, z7 = z**3, z**5, z**7
@@ -296,8 +420,17 @@ def t_ppf(p: float, df: float) -> float:
     lo, hi = 0.0, max(2.0 * max(t, 1.0), 2.0)
     while t_cdf(hi, df) < p:
         hi *= 2.0
-        if hi > 1e13:
-            break
+        if hi > 1e300:
+            # The root is outside the double range.  This happens for a tiny
+            # df with a small tail probability -- the t tail decays like
+            # t**(-df), so for df = 0.05 the 0.005 quantile is about 1e60**4.
+            # Bisecting an unbracketed interval would return a plausible-looking
+            # wrong number, so refuse instead.  (Latent defect found while
+            # extending the quadrature below df = 1.)
+            raise ValueError(
+                f"t_ppf: the p={p!r} quantile of t with df={df!r} exceeds the "
+                f"range of a double; the critical value is not representable"
+            )
     if not (lo < t < hi):
         t = 0.5 * (lo + hi)
 
@@ -465,6 +598,134 @@ def _scale_panels(df: float):
 
 
 @lru_cache(maxsize=4096)
+def _log_scale_params(df: float) -> tuple[float, float]:
+    """Constants of the mixing density in ``y = log s``.
+
+    The mixture representation integrates over `S = sqrt(V/df)`.  Substituting
+    `y = log s` gives, with `a = df/2`,
+
+        log h(y) = L0 - a * (expm1(2y) - 2y),   L0 = log h(0)
+
+    which has three properties the `s`-space form lacks:
+
+    * the mode sits at `y = 0` for **every** `df > 0`;
+    * the `s**(df-1)` endpoint singularity (integrable but unresolvable by
+      Gauss-Legendre for `df < 1`) becomes an entire function;
+    * `expm1(2y) - 2y` is exactly 0 at the mode and `O(y**2)` around it, so no
+      term in the exponent is a difference of large nearly-equal numbers.
+
+    The second property is what matters for correctness: in `s` space the
+    quadrature silently lost accuracy below `df = 1` (measured: power 0.252
+    where the true answer was 0.100).
+    """
+    a = 0.5 * df
+    if a >= _STIRLING_MIN:
+        corr = (
+            1.0 / (12.0 * a)
+            - 1.0 / (360.0 * a**3)
+            + 1.0 / (1260.0 * a**5)
+            - 1.0 / (1680.0 * a**7)
+        )
+        l0 = math.log(2.0) - _HALF_LOG_2PI + 0.5 * math.log(a) - corr
+    else:
+        l0 = math.log(2.0) + a * math.log(a) - math.lgamma(a) - a
+    return a, l0
+
+
+def _log_h(y: float, a: float, l0: float) -> float:
+    """log of the mixing density at ``y = log s``."""
+    return l0 - a * (math.expm1(2.0 * y) - 2.0 * y)
+
+
+#: Depth of the log-density ladder used to place quadrature panels.  Panels are
+#: delimited by the points where the log-density has fallen this far below its
+#: mode, which concentrates nodes where the mass is for every df.
+_PANEL_LEVELS_LOG = (
+    0.02, 0.1, 0.35, 1.0, 2.2, 4.5, 9.0, 18.0, 36.0, 75.0, 160.0, 350.0, 720.0,
+)
+
+
+def _solve_level(level: float, a: float, negative: bool) -> float:
+    """Find y on one side of the mode where a*(expm1(2y) - 2y) == level."""
+
+    def q(y: float) -> float:
+        return a * (math.expm1(2.0 * y) - 2.0 * y)
+
+    if negative:
+        lo, hi = -1e-9, -1e-9
+        step = max(1.0, 0.5 * level / a)
+        hi = -1e-12
+        lo = -step
+        while q(lo) < level:
+            lo *= 2.0
+            if lo < -1e7:
+                break
+    else:
+        lo, hi = 1e-12, max(1e-9, 0.5 * math.log1p(level / a + 1.0) + 1.0)
+        while q(hi) < level:
+            hi *= 2.0
+            if hi > 1e4:
+                break
+        lo = 1e-12
+    for _ in range(200):
+        mid = 0.5 * (lo + hi)
+        if mid == lo or mid == hi:
+            break
+        if (q(mid) < level) == (not negative):
+            lo = mid
+        else:
+            hi = mid
+    return 0.5 * (lo + hi)
+
+
+@lru_cache(maxsize=4096)
+def _log_scale_panels(df: float) -> tuple[tuple[float, float], ...]:
+    """Panel edges in ``y`` space, delimited by log-density level sets."""
+    a, _ = _log_scale_params(df)
+    left = [_solve_level(lv, a, True) for lv in reversed(_PANEL_LEVELS_LOG)]
+    right = [_solve_level(lv, a, False) for lv in _PANEL_LEVELS_LOG]
+    edges = left + [0.0] + right
+    out = []
+    for lo, hi in zip(edges, edges[1:]):
+        if hi > lo:
+            out.append((lo, hi))
+    return tuple(out)
+
+
+#: Where Phi(x) does its work.  The integrand of the mixture representation is
+#: Phi(t*exp(y) - ncp) times a smooth density; Phi is flat outside roughly
+#: +/- 8 and turns over sharply inside it.  Gauss-Legendre cannot resolve that
+#: turn if it falls in the middle of a wide panel -- which is exactly what
+#: happens for a huge critical value, where the turn sits far out in the
+#: left tail of the density.  So the turn gets its own breakpoints.
+_PHI_LEVELS = (-8.0, -4.0, -2.0, -1.0, 0.0, 1.0, 2.0, 4.0, 8.0)
+
+
+def _panels_with_phi_transition(
+    df: float, t: float, ncp: float
+) -> tuple[tuple[float, float], ...]:
+    """Density-level panels, refined where Phi(t*exp(y) - ncp) turns over."""
+    base = _log_scale_panels(df)
+    if t == 0.0:
+        return base
+    lo_edge, hi_edge = base[0][0], base[-1][1]
+    cuts = set()
+    for level in _PHI_LEVELS:
+        arg = (level + ncp) / t
+        if arg <= 0.0:
+            continue
+        y = math.log(arg)
+        if lo_edge < y < hi_edge:
+            cuts.add(y)
+    if not cuts:
+        return base
+    edges = sorted({lo_edge, hi_edge, *(e for p in base for e in p), *cuts})
+    return tuple(
+        (a, b) for a, b in zip(edges, edges[1:]) if b > a
+    )
+
+
+@lru_cache(maxsize=4096)
 def _scale_params(df: float) -> tuple[float, float, bool]:
     """Pre-computed constants for the density of S = sqrt(V/df), V ~ chi2(df).
 
@@ -512,6 +773,54 @@ def _scale_pdf(s: float, params: tuple[float, float, bool]) -> float:
     return math.exp(lg)
 
 
+def _nct_mixture(t: float, df: float, ncp: float, upper: bool) -> float:
+    """Shared quadrature for the noncentral t CDF and survival function.
+
+    ``upper=False`` integrates ``Phi(t*s - ncp)`` and gives ``P(T <= t)``;
+    ``upper=True`` integrates ``Phi(ncp - t*s)`` and gives ``P(T > t)``.
+    """
+    a, l0 = _log_scale_params(df)
+    nodes, weights = _gauss_legendre(_GL_ORDER)
+    total = 0.0
+    for lo, hi in _panels_with_phi_transition(df, t, ncp):
+        half = 0.5 * (hi - lo)
+        mid = 0.5 * (hi + lo)
+        acc = 0.0
+        for x, w in zip(nodes, weights):
+            y = mid + half * x
+            lh = _log_h(y, a, l0)
+            if lh < -745.0:
+                continue
+            ts = t * math.exp(y)
+            acc += w * math.exp(lh) * norm_cdf(ncp - ts if upper else ts - ncp)
+        total += half * acc
+    if total < 0.0:
+        return 0.0
+    if total > 1.0:
+        return 1.0
+    return total
+
+
+def nct_sf(t: float, df: float, ncp: float) -> float:
+    """Survival function P(T > t) of the noncentral Student t distribution.
+
+    Computed directly, as ``E_S[Phi(ncp - t*S)]``, and **not** as
+    ``1 - nct_cdf(t)``.  The difference is a sum of positive terms versus a
+    subtraction from 1: when the answer is small -- a one-tailed test pointed
+    the wrong way has power 7.7e-06, and an alpha of 1e-12 makes the size
+    itself tiny -- the subtraction keeps only absolute accuracy, while this
+    keeps relative accuracy.  Power is exactly this quantity (SPEC F-02), so
+    the distinction is not academic.
+    """
+    if df <= 0.0:
+        raise ValueError("nct_sf: df must be > 0")
+    if ncp == 0.0:
+        return t_sf(t, df)
+    if df > 1e8:  # degenerate limit, S -> 1
+        return norm_cdf(ncp - t)
+    return _nct_mixture(t, df, ncp, upper=True)
+
+
 def nct_cdf(t: float, df: float, ncp: float) -> float:
     """CDF of the noncentral Student t distribution.
 
@@ -531,21 +840,4 @@ def nct_cdf(t: float, df: float, ncp: float) -> float:
     if df > 1e8:  # degenerate limit, S -> 1
         return norm_cdf(t - ncp)
 
-    params = _scale_params(df)
-    nodes, weights = _gauss_legendre(_GL_ORDER)
-    total = 0.0
-    for lo, hi in _scale_panels(df):
-        half = 0.5 * (hi - lo)
-        mid = 0.5 * (hi + lo)
-        acc = 0.0
-        for x, w in zip(nodes, weights):
-            s = mid + half * x
-            dens = _scale_pdf(s, params)
-            if dens != 0.0:
-                acc += w * dens * norm_cdf(t * s - ncp)
-        total += half * acc
-    if total < 0.0:
-        return 0.0
-    if total > 1.0:
-        return 1.0
-    return total
+    return _nct_mixture(t, df, ncp, upper=False)

@@ -7,13 +7,12 @@ checkout with the commands shown.
 Environment of the recorded run: CPython 3.12.1 on Windows 11, SciPy 1.14.1,
 statsmodels 0.15.0, mpmath 1.3, `mcp` 2.3.0, `anthropic` 2.3.0.
 
-The single skip is `tests/test_cleanroom_conformance.py`, which runs only when
-an independent second implementation is present
-(see [CLEANROOM-PROTOCOL.md](CLEANROOM-PROTOCOL.md)).
+Nothing is skipped: all four oracles (SciPy, statsmodels, mpmath, the
+clean-room implementation) are present.
 
 ```console
 $ python -m pytest -q
-698 passed, 1 skipped in 138.20s
+850 passed in 107.04s
 ```
 
 ---
@@ -143,14 +142,21 @@ whichever library is better known.
 
 ### 3.1 Measured worst-case deviations
 
-| quantity | vs SciPy | grid |
+| quantity | error | grid |
 |---|---|---|
-| noncentral *t* CDF `T(x;ν,δ)` | **1.7e-14** | `ν ∈ {1 … 10 000}` × `δ ∈ {0.1 … 15}` × `x ∈ {−4 … 12}` |
-| central *t* CDF `T(x;ν)` | **2.9e-14** | `ν ∈ {1 … 20 000}` × `x ∈ {−9 … 11}` |
-| central *t* quantile, critical-value range | **4.7e-11** | `ν ∈ 1…300` × `α ∈ {.001,.01,.05,.1,.2}`, both tails |
+| noncentral *t* CDF, `ν ≥ 1` | **1.5e-14** | `ν ∈ {1 … 10 000}` × `δ ∈ {0.1 … 30}` × `x ∈ {−6 … 40}` |
+| noncentral *t* CDF, `0 < ν < 1` | **6.7e-16** | `ν ∈ {0.05 … 0.99}` × `δ ∈ {0.1 … 3}` × `x ∈ {−2 … 20}` |
+| noncentral *t* survival function | **5.3e-15** | same grid, vs `scipy.stats.nct.sf` |
+| central *t* CDF | **2.9e-14** | `ν ∈ {1 … 20 000}` × `x ∈ {−9 … 11}`, vs mpmath |
+| critical value `t_{1-α,ν}` | **1.0e-14** relative | `ν ∈ {1 … 1000}` × `α ∈ {.001 … .2}`, both tails, vs mpmath |
+| size of a two-sided test at `δ = 0` | **1.8e-13** relative | `ν ∈ {1 … 5000}` × `α ∈ {1e-12 … 0.90}` |
 | normal quantile `Φ⁻¹` | **1.8e-15** | `p ∈ {1e-12 … 1−1e-12}` |
 | χ² quantile | **3e-10** relative | `ν ∈ {1 … 300}` × `p ∈ {1e-8 … 1−1e-8}` |
-| quadrature mass closure (no oracle needed) | **2.1e-14** | `ν ∈ {1 … 100 000}` |
+| quadrature mass closure (no oracle at all) | **9.0e-15** | `ν ∈ {0.01 … 1 000 000}` |
+
+Two of these are self-certifying — the mass closure needs no oracle, and the
+size of a test at the null is `α` by definition — so they cannot be an
+artefact of agreeing with the wrong reference.
 
 ### 3.2 Where SciPy is the one that is wrong
 
@@ -173,17 +179,30 @@ cannot rot:
 $ python -m pytest tests/test_numerics.py -k more_accurate_than_scipy -q
 ```
 
-### 3.3 Two numerical defects found and fixed by this process
+### 3.3 Six numerical defects found and fixed by this process
 
-Both were invisible to the sample-size gate (they changed power in the 12th
-decimal) and both are now documented in
+Every one is a cancellation, in the sense that the arithmetic was textbook and
+the error came entirely from *which algebraically equivalent form* was being
+evaluated. Two were found by arbitration against mpmath; four more by the
+clean-room pass (§7) pushing the engine into regions its own tests never
+visited. All six are now written into
 [SPEC §4](../SPEC.md#4-numerical-requirements) as warnings to the next
-implementer:
+implementer.
 
-| defect | symptom | fix | improvement |
-|---|---|---|---|
-| `lgamma(a+b) − lgamma(a)` evaluated naively | central *t* CDF error `4.1e-13` at `ν = 5000`; quadrature mass error `8.7e-12` at `ν = 10 000` | Stirling series rewritten so every term is `O(1)` (`numerics._log_gamma_ratio`) | `4.1e-13 → 2.9e-14`; `8.7e-12 → 1.5e-14` |
-| `1 − x` recovered by subtraction for `x = ν/(ν+t²)` | up to 11 significant digits lost as `x → 1` | the complement is passed in explicitly (`numerics.betainc_xy`) | `5.2e-13 → 2.9e-14` at `ν = 20 000` |
+| # | defect | symptom | fix | improvement |
+|---|---|---|---|---|
+| 1 | `lgamma(a+b) − lgamma(a)` evaluated naively | central *t* CDF error `4.1e-13` at `ν = 5000`; mass error `8.7e-12` at `ν = 10 000` | Stirling series rewritten so every term is `O(1)` (`_log_gamma_ratio`) | `4.1e-13 → 2.9e-14` |
+| 2 | `1 − x` recovered by subtraction for `x = ν/(ν+t²)` | up to 11 significant digits lost as `x → 1` | the complement is passed in explicitly (`betainc_xy`) | `5.2e-13 → 2.9e-14` |
+| 3 | quadrature run in `s` rather than `y = log s` | **wrong answer**, not a tolerance miss: two-sided size `0.252` where `α` was `0.100`, for `ν < 1` | the `s^(ν-1)` singularity becomes an entire function in `y` | `0.252 → 1.2e-9`, then `6.7e-16` with (4) |
+| 4 | `Φ`'s turn not resolved by any panel edge | `2.8e-4` at `ν = 0.05`, where a huge critical value pushes the turn into the density's left tail | breakpoints where `x·e^y − δ` crosses `0, ±1, ±2, ±4, ±8` | `2.8e-4 → 1.2e-9` |
+| 5 | power computed as `1 − nct_cdf` | relative error `6e-4` on the size at `α = 1e-12`; no relative accuracy at all for a tiny power | survival function computed directly as `E_S[Φ(δ − x·S)]` (`nct_sf`) | `6e-4 → 1.8e-13` relative |
+| 6 | critical value taken as the `1−α/2` quantile, and `t*t` squared unguarded | `1 − α/2` rounds to exactly `1.0` below `α ≈ 1e-16`, so the criterion analysis **failed outright** at `α = 1e-300`; and `t_isf(1e-300, ν=1)` returned `1.2e69` instead of `3.18e299` | upper-tail quantile `t_isf` plus an asymptotic branch above `t = 1e120` | the Cauchy closed form is now matched to `1e-12` relative |
+
+Defect 6 is worth a second look because **SciPy has the same symptom**:
+`scipy.stats.t.isf(1e-300, df=1)` returns `1e+100`, a bracket limit dressed as
+an answer; the true value is `3.1830988618e+299` (`1/(π·q)` for a Cauchy
+tail), which is what this engine returns. Pinned by
+`test_t_isf_is_exact_for_the_cauchy_tail`.
 
 ### 3.4 Headroom
 
@@ -252,6 +271,12 @@ Three layers of interface test:
 | `tests/test_cli.py` (48 tests) | exit codes, JSON schema keys, the `--min-match` gate, the implicit `solve` subcommand, the `--result-prefix` collision guard, and a deliberately hostile vector file: semicolon delimiter, Greek-letter headers (`α err prob`), G\*Power's own analysis labels (`A priori`), decimal commas (`0,05`), `NA` cells, and an expected-answer column named `N` that must not be fed back in as an input |
 | `tests/test_mcp_server.py` (9 tests) | each tool returns the engine's dict verbatim, through the real MCP dispatcher; errors arrive as data, never as exceptions |
 | `tests/test_mcp_stdio_e2e.py` (4 tests) | `python -m gpower_rea.mcp_server` spawned as a **real subprocess**, driven over stdio by an MCP client — the exact transport the agent uses. A packaging or entry-point regression cannot pass CI while the in-process tests stay green. |
+| `tests/test_agent_offline.py` (22 tests) | the agent's loop driven with a stub client: tool-call extraction, history mirroring between turns, the `stop_reason == "refusal"` short-circuit, and the degradation path when the refusal-fallback beta is unavailable (including that the failed turn is rolled out of the history). Also asserts the system prompt still states the no-arithmetic rule, the four defaults and the "not G\*Power" clause. |
+
+**The agent has not been run against the live API** — the build machine has no
+Anthropic credentials. Everything around the model call is tested; the model
+call is not. [SESSION-LOG.md](SESSION-LOG.md) carries that as a named,
+unsigned attestation with the two commands that close it.
 
 The MCP layer works against **both** SDK generations: `mcp` 1.x (`FastMCP`)
 and `mcp` 2.x (`MCPServer`, renamed upstream). The server detects which is
@@ -290,7 +315,81 @@ half of why the repository is committed early rather than at the end.
 
 ---
 
-## 7. GUI probe status
+## 7. The clean-room pass — an independent implementation of the same spec
+
+`SPEC.md` **v1.0** was frozen and handed to a separate agent session whose only
+inputs were that file and a naming-only interface document: no access to
+`src/`, to `docs/EVIDENCE/`, to the probe worksheets, or to the conformance
+vectors. It was told that if the specification was incomplete it must record
+the gap rather than guess. Its output is in
+[`cleanroom/`](../cleanroom/).
+
+### 7.1 It conforms
+
+```console
+$ python tools/judge_cleanroom.py
+conformance vectors : 401/401 exact N (rate 1.0000)
+power within 5e-7   : 401/401
+SPEC properties       F-02 F-03 F-04 F-05 F-06/F-12 F-07 F-09   all PASS
+Analysis-type round trips                                       all PASS
+Cross-implementation grid: 300/300 identical
+VERDICT: CONFORMING
+```
+
+Same 401 vectors, same tolerances, plus the discriminating SPEC properties and
+the five-way round trips. The 300-case cross-implementation grid sweeps five
+tests × five α × six target powers × both tail counts.
+
+### 7.2 It is independent
+
+A clean-room claim that cannot be checked is worth nothing, so the overlap is
+measured rather than asserted:
+
+| | |
+|---|---|
+| identifiers, shipped / clean room | 1309 / 612 |
+| shared | 326 (Jaccard **0.204**) |
+| shared **private** helper names | `_SQRT2`, `_STIRLING_MIN` |
+| of those, not named by the handover documents | `_SQRT2` |
+| identical comment lines | **0** |
+
+Domain vocabulary (`alpha`, `noncentrality`, `quadrature`) is expected to
+recur and says nothing. `_STIRLING_MIN` is explained by SPEC §4, which names
+the Stirling series; `_SQRT2` is the constant in `erfc(-x/√2)`. The two
+implementations reached the same answers through visibly different machinery:
+the clean room reparametrised the quadrature to `y = log s` and computed the
+survival function directly, which this engine did **not** do at the time — and
+then adopted, because both were better (defects 3–5 in §3.3).
+
+### 7.3 It found five specification defects
+
+The point of the exercise. Twelve underspecified points were reported; each
+was then probed on both implementations to see whether it actually bites:
+
+```console
+$ python tools/probe_spec_gaps.py
+  AGREE: 8, DIVERGE: 3, N/A: 1      (before the fixes: AGREE 6, DIVERGE 5)
+```
+
+Five live divergences — places where two competent readers of the same document
+produced different numbers. One of them (`G-05`) was a genuine wrong answer in
+the shipped engine: the criterion analysis returned its own bracket floor of
+`1e-12` where the honest answer was `4.2e-60`. **No amount of testing the
+engine against itself could have found it**, because every test either round
+tripped through the same bisection or compared against a reference using the
+same bracket.
+
+Three remain as deliberate, documented conventions — `G-03` (which effect size
+the result echoes), `G-11` (an inapplicable parameter is rejected, not
+ignored), and the knife-edge half of `G-04`. SPEC v1.1 states each one, so a
+third implementation cannot drift the same way.
+
+Full account: [EVIDENCE/E-013](EVIDENCE/E-013-cleanroom-divergence.md) and
+[SPEC F-13](../SPEC.md#f-13--points-the-specification-left-undetermined-now-specified).
+
+---
+
+## 8. GUI probe status
 
 The behavioural half of the evidence requires an installation. The harness is
 generated and ready:
@@ -321,7 +420,7 @@ reproduced to all seven printed decimals (E-001).
 
 ---
 
-## 8. Full reproduction
+## 9. Full reproduction
 
 ```console
 $ pip install -e ".[mcp,agent,dev]"

@@ -94,7 +94,7 @@ class Procedure:
     two_group: bool = False
     aliases: tuple[str, ...] = ()
     extra: tuple[ExtraParam, ...] = ()
-    es_bounds: tuple[float, float] = (1e-9, 100.0)
+    es_bounds: tuple[float, float] = (1e-12, 100.0)
     es_check: Callable[[float], bool] | None = None
     supports_solve: tuple[str, ...] = (
         "n",
@@ -158,7 +158,8 @@ class Procedure:
         if self.es_check is not None and not self.es_check(es):
             raise ValidationError(
                 f"{self.key}: effect size {self.effect_size_name}={es} is "
-                f"outside the admissible domain"
+                f"outside the admissible domain "
+                f"({self.effect_size_label})"
             )
 
     def describe(self) -> dict:
@@ -201,7 +202,7 @@ _INDEP = Procedure(
     df_fn=lambda s, e: float(s.n1 + s.n2 - 2),
     ncp_fn=lambda s, d, e: d * math.sqrt(s.n1 * s.n2 / float(s.n1 + s.n2)),
     min_sample_fn=lambda e: Sample(2, 2),
-    es_bounds=(1e-9, 100.0),
+    es_bounds=(1e-12, 100.0),
     spec_refs=("F-01", "F-02", "F-05", "F-06"),
     notes=(
         "Noncentrality uses the harmonic-style term sqrt(n1*n2/(n1+n2)); "
@@ -221,7 +222,7 @@ _PAIRED = Procedure(
     df_fn=lambda s, e: float(s.total - 1),
     ncp_fn=lambda s, dz, e: dz * math.sqrt(s.total),
     min_sample_fn=lambda e: Sample(2),
-    es_bounds=(1e-9, 100.0),
+    es_bounds=(1e-12, 100.0),
     spec_refs=("F-01", "F-02", "F-03"),
     notes="N is the number of pairs, not the number of observations.",
 )
@@ -238,7 +239,7 @@ _ONE_SAMPLE = Procedure(
     df_fn=lambda s, e: float(s.total - 1),
     ncp_fn=lambda s, d, e: d * math.sqrt(s.total),
     min_sample_fn=lambda e: Sample(2),
-    es_bounds=(1e-9, 100.0),
+    es_bounds=(1e-12, 100.0),
     spec_refs=("F-01", "F-02", "F-03"),
     notes=(
         "Algebraically identical to the matched-pairs case; G*Power keeps "
@@ -258,7 +259,7 @@ _POINT_BISERIAL = Procedure(
     df_fn=lambda s, e: float(s.total - 2),
     ncp_fn=lambda s, r, e: r * math.sqrt(s.total / (1.0 - r * r)),
     min_sample_fn=lambda e: Sample(3),
-    es_bounds=(1e-9, 1.0 - 1e-9),
+    es_bounds=(1e-12, 1.0 - 1e-12),
     es_check=lambda r: 0.0 < abs(r) < 1.0,
     spec_refs=("F-01", "F-02", "F-04"),
     notes=(
@@ -289,10 +290,15 @@ _REGRESSION = Procedure(
         ),
     ),
     es_bounds=(1e-12, 1e6),
-    spec_refs=("F-01", "F-02", "F-07"),
+    # SPEC F-13 / G-02: f2 is a squared quantity, so the F-08 sign rule does
+    # not extend to it -- delta = sqrt(f2*N) has no real value for f2 < 0.
+    # Reject it with a clear message instead of letting math.sqrt raise.
+    es_check=lambda f2: f2 >= 0.0,
+    spec_refs=("F-01", "F-02", "F-07", "F-13"),
     notes=(
         "Reduction check: with predictors=1 and f2 = r^2/(1-r^2) this collapses "
-        "exactly onto the point-biserial / simple-correlation t test."
+        "exactly onto the point-biserial / simple-correlation t test. f2 is a "
+        "squared effect size, so negative values are rejected (SPEC F-13)."
     ),
 )
 
@@ -325,7 +331,7 @@ _GENERIC = Procedure(
             minimum=1e-6,
         ),
     ),
-    es_bounds=(1e-9, 1e6),
+    es_bounds=(1e-12, 1e6),
     supports_solve=("power", "alpha", "effect-size", "compromise"),
     spec_refs=("F-01", "F-02"),
     notes=(
