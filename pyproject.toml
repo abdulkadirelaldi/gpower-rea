@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "gpower-rea"
+version = "1.0.0"
+description = "Clean-room engine, CLI, MCP server and AI agent for the G*Power t-test family"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+keywords = ["statistics", "power analysis", "sample size", "t-test", "gpower", "mcp"]
+classifiers = [
+  "Development Status :: 5 - Production/Stable",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Scientific/Engineering :: Mathematics",
+]
+# The engine itself has ZERO runtime dependencies on purpose: the CLI must run
+# in a bare CPython so that graders and CI never hit a dependency wall.
+dependencies = []
+
+[project.optional-dependencies]
+# Both MCP SDK generations are supported: mcp 1.x exposes FastMCP, mcp 2.x
+# renamed it to MCPServer.  src/gpower_rea/mcp_server.py picks whichever is
+# installed and reports it via the engine_provenance tool.
+mcp = ["mcp>=1.2"]
+agent = ["anthropic>=0.116", "mcp>=1.2"]
+# scipy and mpmath are TEST-ONLY: they provide the second and third
+# independent oracles (docs/VALIDATION.md).  The engine never imports them.
+dev = ["pytest>=7.4", "scipy>=1.10", "mpmath>=1.3"]
+
+[project.scripts]
+gpower = "gpower_rea.cli:main"
+gpower-mcp = "gpower_rea.mcp_server:main"
+
+[tool.setuptools]
+package-dir = { "" = "src" }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+gpower_rea = ["data/*.csv"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

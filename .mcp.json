@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "gpower": {
+      "command": "gpower-mcp",
+      "args": [],
+      "env": {}
+    }
+  }
+}

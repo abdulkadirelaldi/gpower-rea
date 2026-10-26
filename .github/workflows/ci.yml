@@ -1,0 +1,112 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  # ------------------------------------------------------------------
+  # The engine must run with nothing but the standard library.  This job
+  # installs no extras on purpose -- if it ever needs one, that is a bug.
+  # ------------------------------------------------------------------
+  bare-engine:
+    name: engine + CLI, zero dependencies
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
+      - run: pip install -e .
+      - name: pip list must contain no scientific stack
+        run: |
+          pip list --format=freeze | tee installed.txt
+          ! grep -Ei '^(numpy|scipy|pandas|mcp|anthropic)==' installed.txt
+      - name: conformance gate
+        run: gpower selftest
+      - name: canonical example
+        run: |
+          gpower solve -t indep -a 0.05 -p 0.95 -e 0.5 --json | tee out.json
+          python - <<'PY'
+          import json
+          d = json.load(open("out.json"))
+          assert d["sample_size"]["total"] == 210, d["sample_size"]
+          assert abs(d["power"] - 0.9501287) < 5e-7, d["power"]
+          assert d["df"] == 208
+          print("canonical example OK")
+          PY
+
+  # ------------------------------------------------------------------
+  # Submission rules, as a machine check.
+  # ------------------------------------------------------------------
+  compliance:
+    name: submission rules
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e .
+      - name: no binary, no decompiler output, one engine, findings in sync
+        run: python tools/compliance_check.py
+      - name: reference vectors are not stale
+        run: python tools/make_vectors.py --check
+      - name: probe worksheet regenerates identically
+        run: |
+          python tools/probe_plan.py
+          git diff --exit-code -- probes/ || \
+            (echo "probe worksheet drifted from the engine" && exit 1)
+
+  # ------------------------------------------------------------------
+  # Full suite, including the independent SciPy re-derivation of all 401
+  # vectors and the mpmath arbitration.
+  # ------------------------------------------------------------------
+  tests:
+    name: tests (py${{ matrix.python }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install -e ".[mcp,dev]" mpmath
+      - run: python -m pytest -q
+
+  # ------------------------------------------------------------------
+  # The agent is not exercised against the API in CI (that would need a
+  # key and would cost money); it is checked for importability and for the
+  # no-arithmetic rule, which is the property that actually matters.
+  # ------------------------------------------------------------------
+  agent-static:
+    name: agent, static checks
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -e ".[mcp,agent]"
+      - name: compiles
+        run: python -m compileall -q agent/
+      - name: no arithmetic in the agent
+        run: python tools/compliance_check.py
+      - name: MCP server starts and advertises its tools
+        run: |
+          python - <<'PY'
+          import asyncio
+          from gpower_rea.mcp_server import mcp
+          tools = asyncio.run(mcp.list_tools())
+          names = sorted(t.name for t in tools)
+          assert names == [
+              "compute_effect_size", "describe_test", "engine_provenance",
+              "list_tests", "power_analysis", "power_curve",
+          ], names
+          print("MCP tools:", ", ".join(names))
+          PY
