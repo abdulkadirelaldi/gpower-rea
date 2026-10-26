@@ -204,14 +204,15 @@ every `α` tested. Candidate A is thus the expression two unrelated
 implementations arrived at, which is a different kind of evidence from an
 argument about test size.
 
-It is used strictly as an **agreement** oracle, never an accuracy one.
-Measured against an exact noncentral-*t* reference, statsmodels' own error
-reaches `7.2e-5` as power approaches 1 — it can return exactly `1.0` where the
-truth is `0.99997773…` — against `1.2e-11` for this engine. Bounding the
-engine with it would have capped the project at its weakest dependency's
-precision. The two roles are kept apart in
-[VALIDATION.md §2b](VALIDATION.md) and the gap is pinned by a test so it
-cannot quietly change meaning.
+It is used strictly as an **agreement** oracle, never an accuracy one — and
+the reason is version drift, not quality. On the development machine
+(statsmodels 0.15.0, SciPy 1.14.1) its error reached `7.2e-5` as power
+approached 1, returning exactly `1.0` where the truth is `0.99997773…`,
+against `1.2e-11` for this engine. On the versions CI installs it is accurate
+to `3.3e-16` and the comparison inverts. Bounding the engine with *either*
+would have tied this project's error bar to a dependency's release schedule.
+The two roles are kept apart in [VALIDATION.md §2b](VALIDATION.md), and the
+test handles both cases explicitly so it cannot quietly change meaning.
 
 ### 5.3 Property tests instead of golden values
 
@@ -228,28 +229,46 @@ number were wrong:
   reproduces the target; compromise satisfies `β/α = q` and `power = 1-β`;
 * the three cross-entry identities of §3 hold exactly.
 
-### 5.4 Arbitration by a fourth oracle, where the others are wrong
+### 5.4 Arbitration by a fourth oracle — and a lesson learned twice
 
 Neither SciPy nor statsmodels is ground truth. At `df = 75, p = 0.95` the
-central-*t* quantile is
+central-*t* quantile, on the development machine, was:
 
 ```
 exact (mpmath, 50 digits)  1.6654253733225633
 this engine                1.6654253733225670   (3.8e-15 off)
-SciPy 1.14                 1.6654253734015287   (7.9e-11 off)
+SciPy 1.14.1               1.6654253734015287   (7.9e-11 off)
 ```
 
 The critical value feeds every power number in the project, so "trust SciPy"
-would have quietly capped the engine's accuracy four orders of magnitude below
-what it achieves. Whenever the engine and an external library disagree beyond
-`1e-13`, a 50-digit `mpmath` computation arbitrates, and the result is recorded
-in [VALIDATION.md](VALIDATION.md). Two numerical defects in the engine were
-found and fixed this way (both documented in
-[SPEC §4](../SPEC.md#4-numerical-requirements)), and twice the external library
-turned out to be the less accurate party.
+would have capped the engine's error bar four orders of magnitude above what
+it achieves. Whenever the engine and an external library disagree beyond
+`1e-13`, a 50-digit `mpmath` computation arbitrates, and the result is
+recorded in [VALIDATION.md](VALIDATION.md). Six numerical defects in the
+engine were found and fixed this way (all documented in
+[SPEC §4](../SPEC.md#4-numerical-requirements)).
 
-The general rule the project ended up with: **a second implementation settles
-what the answer is; only a higher-precision computation settles who is right.**
+**Then the lesson arrived a second time, pointing the other way.** An early
+draft of the tests asserted that the engine *beat* SciPy and statsmodels at
+these points. CI installs newer versions of both, and on those the same
+quantile is accurate to `4.4e-16` — better than this engine — and the
+statsmodels saturation is gone. The assertion failed, correctly.
+
+So the rule is sharper than "the libraries are worse":
+
+> **A library's numerical accuracy is a property of its version.** Whichever
+> way the comparison runs today, an external library must not be the thing
+> that bounds your own error bar.
+
+The tests now assert the engine's own error against an exact oracle, and mere
+*agreement* with the libraries at a tolerance wide enough for any version;
+which one is closer is not asserted at all. The overclaim is recorded in
+[VALIDATION §3.2](VALIDATION.md) rather than quietly deleted, because it was
+caught only by running CI on a different dependency set than the laptop — which
+is the whole argument for doing that.
+
+And the companion rule, from §7: **a second implementation settles what the
+answer is; only a higher-precision computation settles who is right.**
 Conflating the two is how a project inherits a dependency's error bar.
 
 ### 5.5 Self-consistency of the quadrature

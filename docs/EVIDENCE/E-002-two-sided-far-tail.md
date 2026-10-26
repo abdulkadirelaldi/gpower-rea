@@ -95,9 +95,13 @@ truncated formula differs from both by more than `1e-3`.
 when writing this file was that a widely used library would take the textbook
 shortcut and that the gap would show up as evidence *against* statsmodels.
 It did not: the small residual disagreement between the two libraries is
-statsmodels' own numerical error (up to `7.2e-5` as power approaches 1, versus
-`1.2e-11` for this engine — see [VALIDATION.md §2b](../VALIDATION.md)), not a
-difference of formula.
+numerical, not a difference of formula. On the development machine
+(statsmodels 0.15.0) that residual was statsmodels' error — up to `7.2e-5` as
+power approaches 1, against `1.2e-11` for this engine. On the newer versions
+CI installs it is the other way round. Which library is closer depends on its
+version and is not asserted anywhere; see
+[VALIDATION.md §2b and §3.2](../VALIDATION.md). What *is* asserted is that
+both compute the same expression — which is the claim this file needs.
 
 So candidate A is the expression **two independent implementations arrived at**.
 That does not by itself settle what G\*Power does — only probe `P-02` does

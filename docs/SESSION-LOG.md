@@ -20,7 +20,8 @@ difference between *done* and *ready to be done*.
 | 8 | Specification repair — four gaps found while implementing, fixed in `SPEC.md`, not guessed | see [CLEANROOM-PROTOCOL §5](CLEANROOM-PROTOCOL.md#5-specification-gaps-closed-before-the-engine-was-written) | done |
 | 9 | Independent re-derivation with SciPy + brute-force search | `tests/test_reference_scipy.py`, 401/401 | done |
 | 9b | Agreement oracle written by other people (`statsmodels`) | `tests/test_reference_statsmodels.py`; independently confirms the F-02 far-tail term | done |
-| 10 | Arbitration by a 50-digit computation wherever a library disagreed | two numerical defects in the engine found and fixed; twice the library was the less accurate party | done |
+| 10 | Arbitration by a 50-digit computation wherever a library disagreed | six numerical defects in the engine found and fixed | done |
+| 10b | **Correction**: an early draft asserted the engine beat SciPy and statsmodels. True on the dev machine, false on the versions CI installs. Tests rewritten to assert the engine's own error and mere agreement | [VALIDATION §3.2](VALIDATION.md) | done |
 | 11 | Interfaces — CLI, MCP server, agent | `cli.py`, `mcp_server.py`, `agent/agent.py` | done |
 | 11b | Agent loop tested offline against a stub client | `tests/test_agent_offline.py`, 22 tests | done |
 | 11c | **Agent run against the live Anthropic API** | — | **NOT VERIFIED — no credentials on the build machine** |
@@ -166,8 +167,9 @@ $ gpower selftest                         # 401/401 exact N
 | vector file is not stale | `make_vectors.py --check` |
 | 401 vectors re-derived by an independent implementation | `test_reference_scipy.py` |
 | a third-party implementation agrees, far-tail term included | `test_reference_statsmodels.py` |
-| the engine's `t` quantile beats SciPy's, arbitrated by mpmath | `test_numerics.py` |
-| the engine beats statsmodels against an exact reference | `test_reference_statsmodels.py` |
+| the engine's `t` quantile is within `1e-13` of a 50-digit computation | `test_numerics.py` |
+| the engine's power is within `1e-10` of an exact reference | `test_reference_statsmodels.py` |
+| the engine agrees with SciPy (`1e-9` rel) and statsmodels (`1e-4`) | both files |
 | every text file is intact UTF-8 (the evidence files are the deliverable) | `compliance_check.py` C-5 |
 | MCP tools return the engine's output verbatim | `test_mcp_server.py` |
 | the MCP server works as a real stdio subprocess | `test_mcp_stdio_e2e.py` |

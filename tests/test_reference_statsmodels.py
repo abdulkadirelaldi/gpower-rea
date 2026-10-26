@@ -14,12 +14,17 @@ Three results are recorded here, and the second one corrects a plausible guess:
    is therefore the expression two independent implementations arrived at,
    which is much stronger evidence than one implementation plus an argument.
 
-2. **statsmodels is an agreement oracle, not an accuracy oracle.**  Measured
-   against an exact noncentral-t reference, its error reaches **7.2e-5** in the
-   high-power regime -- it returns exactly `1.0` where the truth is
-   `0.9999777...`.  The engine's worst error on the same grid is **1.2e-11**,
-   six orders of magnitude better.  So broad agreement is asserted at 1e-4 and
-   the accuracy oracle remains mpmath (tests/test_numerics.py).
+2. **statsmodels is an agreement oracle, not an accuracy oracle** -- and the
+   reason is not that it is worse, but that *how good it is depends on its
+   version*.  On statsmodels 0.15.0 with SciPy 1.14.1 its error reached
+   **7.2e-5** in the high-power regime, returning exactly `1.0` where the
+   truth is `0.9999777...`, against **1.2e-11** for this engine.  On the
+   versions CI installs it is accurate to **3.3e-16** and the comparison
+   inverts.  Both are true of their versions; neither is a durable property of
+   either project.  So agreement is asserted at a tolerance wide enough for
+   both (1e-4), the engine's own error is asserted separately against an exact
+   reference, and the accuracy oracle remains mpmath
+   (tests/test_numerics.py).
 
 3. Agreement holds for the balanced and unbalanced two-group designs and the
    one-sample design, in both tail counts -- the parts of the family
@@ -164,16 +169,20 @@ def test_unbalanced_two_group_power_agrees():
 # 3. Who is right where they disagree
 # --------------------------------------------------------------------------
 @pytest.mark.parametrize("tails", [1, 2])
-def test_engine_is_far_more_accurate_than_statsmodels(tails):
-    """Both are compared with an exact reference on the same grid.
+def test_engine_accuracy_against_an_exact_reference(tails):
+    """The engine's own error on the grid above, against an exact reference.
 
-    Measured worst deviations from exact, recorded in docs/VALIDATION.md:
+    This asserts only the engine's accuracy, which is version-independent.
+    An earlier draft also asserted that the engine *beat* statsmodels: on
+    statsmodels 0.15.0 / SciPy 1.14.1 it did, by six orders of magnitude
+    (1.8e-05 vs 9.2e-12, because that build saturated to exactly 1.0 as power
+    approached 1). On the versions CI installs, statsmodels is accurate to
+    3.3e-16 and the comparison inverts.
 
-        engine       9.2e-12  (two-group)   1.2e-11  (one sample)
-        statsmodels  1.8e-05  (two-group)   7.2e-05  (one sample)
-
-    statsmodels loses precision as power approaches 1, where it can return
-    exactly 1.0; the engine's mixture-representation quadrature does not.
+    Both facts are true of their versions, and neither is a durable property
+    of either project -- which is exactly why an external library must not be
+    the thing that bounds your own error bar. docs/VALIDATION.md records the
+    episode rather than the ranking.
     """
     worst_mine = worst_theirs = 0.0
     for d in (0.05, 0.2, 0.35, 0.5, 0.8, 1.2):
@@ -190,14 +199,19 @@ def test_engine_is_far_more_accurate_than_statsmodels(tails):
             worst_mine = max(worst_mine, abs(mine - ref))
             worst_theirs = max(worst_theirs, abs(theirs - ref))
     assert worst_mine < ENGINE_TOL, f"engine error {worst_mine:g}"
-    assert worst_mine < worst_theirs, (
-        f"engine {worst_mine:g} vs statsmodels {worst_theirs:g}"
-    )
+    # Reported, not asserted: see the docstring.
+    print(f"\n  engine {worst_mine:.3g} / statsmodels {worst_theirs:.3g}")
 
 
-def test_statsmodels_saturates_to_one_where_the_engine_does_not():
-    """A concrete instance of the accuracy gap, pinned so it cannot silently
-    change the meaning of the agreement tolerance above."""
+def test_whichever_library_saturates_the_engine_does_not():
+    """Power near 1 is where a `1 - CDF` formulation gives up.
+
+    At d = 0.35, N = 300, one sample, two tails the exact power is
+    0.9999777374692385.  Some statsmodels builds return exactly 1.0 here;
+    newer ones return the exact value.  Either way the engine must return it
+    to 1e-10, because it computes the survival function directly rather than
+    subtracting from one (SPEC section 4, item 4).
+    """
     mine = solve("ttest-one-sample", "power", alpha=0.05, effect_size=0.35,
                  tails=2, n=300).power
     theirs = float(
@@ -205,10 +219,15 @@ def test_statsmodels_saturates_to_one_where_the_engine_does_not():
                    alternative="two-sided")
     )
     ref = _exact_power(299.0, 0.35 * math.sqrt(300.0), 0.05, 2)
-    assert theirs == 1.0, "statsmodels no longer saturates; re-tune this test"
     assert ref < 1.0
-    assert abs(mine - ref) < 1e-10
-    assert abs(theirs - ref) > 1e-5
+    assert abs(mine - ref) < 1e-10, f"engine error {abs(mine - ref):g}"
+    if theirs == 1.0:
+        # The regression this test was written for.
+        assert abs(theirs - ref) > 1e-5
+    else:
+        assert abs(theirs - ref) < 1e-9, (
+            "statsmodels neither saturates nor agrees; investigate"
+        )
 
 
 # --------------------------------------------------------------------------

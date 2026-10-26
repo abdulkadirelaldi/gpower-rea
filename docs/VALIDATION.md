@@ -116,24 +116,29 @@ unbalanced two-group, one-sample; both tail counts), to `1e-4`.
 
 ### Why the tolerance is 1e-4 and not 1e-8
 
-Because statsmodels is an **agreement** oracle, not an **accuracy** oracle.
-Measured against an exact noncentral-*t* reference on the same grid:
+Because statsmodels is an **agreement** oracle, not an **accuracy** oracle —
+and the reason is version drift rather than quality. Measured against an
+exact noncentral-*t* reference on the same grid:
 
 | | worst error, two-group | worst error, one-sample |
 |---|---|---|
-| **this engine** | **9.2e-12** | **1.2e-11** |
-| statsmodels 0.15 | 1.8e-05 | 7.2e-05 |
+| this engine | `9.2e-12` | `1.2e-11` |
+| statsmodels 0.15.0 + SciPy 1.14.1 (dev machine) | `1.8e-05` | `7.2e-05` |
+| statsmodels + SciPy as installed by CI | `3.3e-16` | `8.6e-16` |
 
-statsmodels loses precision as power approaches 1. A pinned instance: at
-`d = 0.35, N = 300`, one sample, two-tailed, the exact power is
-`0.9999777374692...`; statsmodels returns exactly `1.0`, the engine returns the
-exact value to `1e-10`. Both facts are asserted in
-`test_statsmodels_saturates_to_one_where_the_engine_does_not`, so the
-tolerance above cannot quietly change meaning.
+The older build lost precision as power approached 1 — at `d = 0.35, N = 300`,
+one sample, two tails it returned exactly `1.0` where the exact power is
+`0.9999777374692385`. The newer build returns the exact value. Same code on
+this side; the comparison inverted entirely.
 
-This is the second time an external library turned out to be the less accurate
-party (the first is the `t` quantile in §3.2). It is the reason this project
-arbitrates disagreements with a 50-digit computation instead of deferring to
+The agreement tolerance is therefore set wide enough to hold under both
+(`1e-4`), the engine's own error is asserted separately against the exact
+reference (`1e-10`), and **which of the two is closer is not asserted at
+all**. `test_whichever_library_saturates_the_engine_does_not` handles either
+case explicitly, so the tolerance cannot quietly change meaning.
+
+See §3.2 for the same lesson arriving the other way round, and for why this
+project arbitrates with a 50-digit computation rather than deferring to
 whichever library is better known.
 
 ---
@@ -158,25 +163,49 @@ Two of these are self-certifying — the mass closure needs no oracle, and the
 size of a test at the null is `α` by definition — so they cannot be an
 artefact of agreeing with the wrong reference.
 
-### 3.2 Where SciPy is the one that is wrong
+### 3.2 Why a library is never the oracle — and a correction
 
-The `4.7e-11` row above is **not** this engine's error. At `ν = 75`,
-`p = 0.95`, a 50-digit `mpmath` computation gives:
+The lesson here arrived in two halves, and the second half corrected the first.
+
+**First half.** On the development machine (SciPy 1.14.1), at `ν = 75`,
+`p = 0.95`:
 
 | source | value | error |
 |---|---|---|
 | exact (mpmath, 50 dps) | `1.6654253733225633` | — |
-| **this engine** | `1.6654253733225670` | **3.8e-15** |
-| SciPy 1.14 | `1.6654253734015287` | 7.9e-11 |
+| this engine | `1.6654253733225670` | `3.8e-15` |
+| SciPy **1.14.1** | `1.6654253734015287` | `7.9e-11` |
 
-The engine is ~21 000× closer to the truth. This matters because the critical
-value feeds every power number in the project: had SciPy been treated as ground
-truth, the engine's accuracy would have been silently capped four orders of
-magnitude below what it achieves. The arbitration is a test, so the claim
-cannot rot:
+That is a factor of ~21 000, and it mattered: the critical value feeds every
+power number in the project, so treating SciPy as ground truth would have
+capped the engine's error bar four orders of magnitude above what it achieves.
+
+**Second half — the correction.** CI installs a newer SciPy, and on that
+version the same quantile is accurate to `4.4e-16` — *better* than this
+engine's `3.8e-15`. The same happened with statsmodels: the saturation-to-1.0
+behaviour measured in §2b is gone on current builds, which are accurate to
+`3.3e-16` where the older one was off by `7.2e-5`.
+
+So the honest statement is **not** "this engine beats SciPy". It is:
+
+> A library's numerical accuracy is a property of its version, not of the
+> library. Whichever direction the comparison happens to run today, an
+> external library must not be the thing that bounds your own error bar.
+
+The tests were rewritten accordingly, and the overclaim is recorded here
+rather than quietly deleted — it was caught by CI running a different
+dependency set than the development machine, which is the entire reason to
+run CI on something other than your own laptop.
+
+| what is asserted now | against | tolerance |
+|---|---|---|
+| the engine's own error | mpmath at 50 digits, or a closed form | `1e-13` |
+| agreement with SciPy | SciPy, whatever version is installed | `1e-9` relative |
+| agreement with statsmodels | statsmodels, whatever version | `1e-4` |
+| which of the two is closer | — | **not asserted** |
 
 ```console
-$ python -m pytest tests/test_numerics.py -k more_accurate_than_scipy -q
+$ python -m pytest tests/test_numerics.py -k "50_digit_oracle or agrees_with_scipy" -q
 ```
 
 ### 3.3 Six numerical defects found and fixed by this process
@@ -198,11 +227,12 @@ implementer.
 | 5 | power computed as `1 − nct_cdf` | relative error `6e-4` on the size at `α = 1e-12`; no relative accuracy at all for a tiny power | survival function computed directly as `E_S[Φ(δ − x·S)]` (`nct_sf`) | `6e-4 → 1.8e-13` relative |
 | 6 | critical value taken as the `1−α/2` quantile, and `t*t` squared unguarded | `1 − α/2` rounds to exactly `1.0` below `α ≈ 1e-16`, so the criterion analysis **failed outright** at `α = 1e-300`; and `t_isf(1e-300, ν=1)` returned `1.2e69` instead of `3.18e299` | upper-tail quantile `t_isf` plus an asymptotic branch above `t = 1e120` | the Cauchy closed form is now matched to `1e-12` relative |
 
-Defect 6 is worth a second look because **SciPy has the same symptom**:
-`scipy.stats.t.isf(1e-300, df=1)` returns `1e+100`, a bracket limit dressed as
-an answer; the true value is `3.1830988618e+299` (`1/(π·q)` for a Cauchy
-tail), which is what this engine returns. Pinned by
-`test_t_isf_is_exact_for_the_cauchy_tail`.
+Defect 6 is worth a second look because SciPy 1.14.1 had the same symptom:
+`scipy.stats.t.isf(1e-300, df=1)` returned `1e+100`, a bracket limit dressed
+as an answer, where the true value is `3.1830988618e+299` (`1/(π·q)` for a
+Cauchy tail). The engine is checked against the **closed form**, not against
+SciPy, so `test_t_isf_is_exact_for_the_cauchy_tail` says something durable
+regardless of what any library version does.
 
 ### 3.4 Headroom
 

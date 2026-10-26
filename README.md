@@ -168,7 +168,7 @@ installation at all:
 | 3 | an implementation written by *other people* (`statsmodels`) | agrees, **including the far-tail term of F-02** — so that formula is what two unrelated implementations arrived at |
 | 4 | **a second implementation of `SPEC.md`, written clean-room by an agent that never saw the code** | **CONFORMING** — 401/401, every SPEC property, 300/300 on a cross-implementation grid, lexical overlap `0.204`, **and it found 5 specification defects** |
 | 5 | property tests: monotonicity, minimality, five-way round trips, three cross-entry identities | all pass, no golden values involved |
-| 6 | arbitration by a 50-digit `mpmath` computation wherever the engine and a library disagree | engine `3.8e-15` vs SciPy `7.9e-11`; statsmodels off by up to `7.2e-5` near power 1 vs the engine's `1.2e-11`. **Six numerical defects in the engine were found and fixed this way** |
+| 6 | arbitration by a 50-digit `mpmath` computation wherever the engine and a library disagree | the engine's own error: `3.8e-15` on a critical value, `1.5e-14` on the noncentral *t*, `9e-15` mass closure. **Six numerical defects in the engine were found and fixed this way** |
 | 7 | 36-row GUI probe worksheet with pre-registered competing predictions | generated and runnable, **0 rows observed** |
 
 Check 4 is the one that paid: five places where two competent readers of the
@@ -181,12 +181,18 @@ clean room also brought three numerical improvements the engine adopted, one of
 which turned a *wrong answer* below `ν = 1` (a two-sided size of `0.252` where
 `α` was `0.100`) into `6.7e-16`.
 
-Two rules the project settled on:
+Three rules the project settled on, each the residue of being wrong once:
 
 * *A second implementation settles what the answer is; only a
   higher-precision computation settles who is right.*
 * *A specification is only as strong as the weakest thing it failed to say.*
   SPEC v1.1 exists because v1.0 was implemented twice and the results differed.
+* *A library's accuracy is a property of its version.* An early draft asserted
+  that this engine beat SciPy and statsmodels — true on the development
+  machine, false on the versions CI installs. The tests now assert the
+  engine's own error against an exact oracle and mere *agreement* with the
+  libraries; which one is closer is not claimed either way
+  ([VALIDATION §3.2](docs/VALIDATION.md)).
 
 Numbers, grids and tolerances in [docs/VALIDATION.md](docs/VALIDATION.md).
 Check 7 is **unsigned** — it needs a G\*Power installation — and

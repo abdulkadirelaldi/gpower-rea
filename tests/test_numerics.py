@@ -404,19 +404,35 @@ def _mpmath_t_ppf(mp, p: str, df: int, start: str) -> float:
     return float(mp.findroot(lambda t: exact_cdf(t) - mp.mpf(p), mp.mpf(start)))
 
 
-def test_t_ppf_is_more_accurate_than_scipy():
+def test_t_ppf_accuracy_against_a_50_digit_oracle():
     """Arbitration by a third oracle (mpmath at 50 digits).
 
-    At df = 75, p = 0.95 the exact quantile is 1.6654253733225633.  This
-    engine lands 3.8e-15 away; SciPy 1.14 lands 7.9e-11 away.  Recorded in
-    docs/VALIDATION.md because the usual reflex -- "trust SciPy" -- is wrong
-    here, and the critical value feeds every power number we report.
+    This asserts the engine's **own** accuracy, which is the only
+    version-independent claim available.  At df = 75, p = 0.95 the exact
+    quantile is 1.6654253733225633 and the engine lands 3.8e-15 away --
+    7 orders of magnitude inside the 1e-10 that SPEC section 4 requires.
+
+    It deliberately does **not** assert that the engine beats SciPy.  It did
+    on SciPy 1.14.1 (which was 7.9e-11 off at this point), and it does not on
+    the version CI installs, which is accurate to 4.4e-16.  The durable lesson
+    from that episode is in docs/VALIDATION.md and it is not "we are better":
+    it is that a library's accuracy is a property of its version, so an
+    external library must never be the thing that bounds your own error bar.
     """
     mp = pytest.importorskip("mpmath")
     mp.mp.dps = 50
     exact = _mpmath_t_ppf(mp, "0.95", 75, "1.6654")
     mine = nm.t_ppf(0.95, 75)
-    assert abs(mine - exact) < 1e-13
-    if _sp is not None:
-        theirs = float(_sp.t.ppf(0.95, 75))
-        assert abs(mine - exact) < abs(theirs - exact)
+    assert abs(mine - exact) < 1e-13, f"engine error {abs(mine - exact):g}"
+
+
+@needs_scipy
+def test_t_ppf_agrees_with_scipy_within_the_stated_tolerance():
+    """Agreement, not superiority.  Either side may be the less accurate one
+    depending on the installed SciPy; both are far inside what SPEC requires."""
+    worst = 0.0
+    for df in (1, 5, 13, 75, 208, 2000):
+        for p in (0.9, 0.95, 0.975, 0.99, 0.995):
+            a, b = nm.t_ppf(p, df), float(_sp.t.ppf(p, df))
+            worst = max(worst, abs(a - b) / abs(b))
+    assert worst < 1e-9, f"worst relative disagreement {worst:g}"
