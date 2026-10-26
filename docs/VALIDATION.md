@@ -13,7 +13,7 @@ an independent second implementation is present
 
 ```console
 $ python -m pytest -q
-676 passed, 1 skipped in 78.93s
+698 passed, 1 skipped in 138.20s
 ```
 
 ---

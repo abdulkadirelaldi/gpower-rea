@@ -131,11 +131,11 @@ settle:
 | [F-02](SPEC.md#f-02--two-sided-power-retains-the-far-tail-term) | **two-sided power keeps the wrong-side tail** — at `δ=0` the two candidate formulas differ by a factor of two | behavioural |
 | [F-03](SPEC.md#f-03--one-sample-and-matched-pairs-ν--n---1-δ--es√n) | matched pairs counts *pairs*, not observations | derived |
 | [F-04](SPEC.md#f-04--point-biserial-ν--n---2-δ--r√n1-r²) | point biserial: `δ` uses `√N`, the statistic uses `√(N−2)` | derived |
-| [F-05](SPEC.md#f-05--balanced-a-priori-search-runs-over-n-per-group-not-total-n) | **the balanced search runs per group, so the total is never odd** — even when an odd split would already suffice | behavioural |
+| [F-05](SPEC.md#f-05--balanced-a-priori-search-runs-over-n-per-group-not-total-n) | **the balanced search runs per group, so the total is never odd** — and an odd split would already have sufficed in **50 %** of settings | behavioural |
 | [F-06](SPEC.md#f-06--minimality-and-actual-power-is-recomputed) | `≥` not `>`, and "Actual power" is a recomputation (`0.9501287`, not `0.9500000`) | behavioural |
 | [F-07](SPEC.md#f-07--regression-coefficient-ν--n---p---1-δ--f²n) | the predictor count enters `ν` only, never `δ` | derived |
 | [F-08](SPEC.md#f-08--a-negative-effect-size-is-a-direction-not-an-error) | a negative effect size is a direction; only the solvers absolutise it | open |
-| [F-09](SPEC.md#f-09--allocation-ratio-rounding) | **two candidate grids for unbalanced allocation**, differing by 1–2 participants; rounding is half-away-from-zero | open |
+| [F-09](SPEC.md#f-09--allocation-ratio-rounding) | **two candidate grids for unbalanced allocation** that disagree on **75.7 %** of settings by 1–3 participants; rounding is half-away-from-zero | open |
 | [F-10](SPEC.md#f-10--compromise-analysis-is-defined-on-the-critical-value) | compromise analysis solves for the critical value | derived |
 | [F-11](SPEC.md#f-11--the-effect-size-drawer-offers-two-pooled-sds-and-the-equal-n-one-is-an-rms) | **the equal-*n* pooling option is an RMS, not a pooled SD** — 49 % difference in required `N` on a realistic example | open |
 | [F-12](SPEC.md#f-12--boundary-behaviour-and-reported-precision) | no epsilon slack at the boundary; display rounding is display only | open |
@@ -170,7 +170,7 @@ Check 6 is **unsigned** — it needs a G\*Power installation — and
 burying it.
 
 ```console
-$ python -m pytest -q                     # 676 passed
+$ python -m pytest -q                     # 698 passed
 $ gpower selftest                         # 401/401 exact N matches (rate 1.0000)
 $ python tools/compliance_check.py        # COMPLIANCE: PASS (C-1..C-4)
 $ python tools/make_vectors.py --check    # vectors are a function of the engine
@@ -239,7 +239,9 @@ tests/
   test_numerics.py           accuracy, self-consistency, mpmath arbitration
   test_engine_invariants.py  monotonicity, minimality, round trips, identities
   test_reference_scipy.py    all 401 vectors re-derived independently
-  test_reference_statsmodels.py  agreement with a third-party implementation
+  test_reference_statsmodels.py      agreement with a third-party implementation
+  test_reference_statsmodels_f05.py  F-05 counter-examples, without our search
+  test_allocation_rule_rates.py      the measured rates quoted in F-09
   test_cli.py                the CLI contract
   test_mcp_server.py         MCP tools == engine output
   test_mcp_stdio_e2e.py      the server as a real subprocess over stdio

@@ -25,9 +25,31 @@ round-half-to-even (`2.5 → 2`).
 The manual introduces the `Allocation ratio N2/N1` field and says the group
 sizes are adjusted accordingly. It does not say what happens when `R·n₁` is
 not an integer, nor whether the optimisation target is the total or the
-per-group size. The two readings differ on roughly a third of parameter
-settings, always by one or two participants — small enough to be mistaken for
-a rounding bug, large enough to matter for an ethics-committee submission.
+per-group size.
+
+**The two readings disagree most of the time.** Measured over a 378-setting
+sweep (`R ∈ {0.5, 1.5, 2, 2.5, 3, 4}` × `d ∈ [0.20, 1.20]` in steps of `0.05`
+× power `{.80, .90, .95}`), with both rules implemented and run:
+
+| `R` | settings where the two rules give a different total |
+|---|---|
+| 0.5 | 12.7 % |
+| 1.5 | 76.2 % |
+| 2.0 | 88.9 % |
+| 2.5 | 90.5 % |
+| 3.0 | 90.5 % |
+| 4.0 | 95.2 % |
+| **overall** | **75.7 %** |
+
+Size of the disagreement, over all 378 settings: identical in 24.3 %,
+1 participant in 34.9 %, 2 in 38.6 %, 3 in 2.1 %.
+
+A difference that appears in three settings out of four is not a rounding
+footnote — on an unbalanced design it changes the recruitment target, and
+therefore the budget and the ethics submission, most of the time. That is why
+this is a finding with a probe rather than a comment in the code.
+
+Reproduce with `python -m pytest tests/test_allocation_rule_rates.py -q`.
 
 Rounding mode is a second, independent undocumented choice: Python, NumPy,
 IEEE-754 and most SQL engines default to half-to-even, so an implementer who
@@ -55,6 +77,24 @@ Note the structural signature: under `n1-grid` the realised ratio `n₂/n₁` is
 `total-grid` it is not (131/88 = 1.4886, 157/79 = 1.9873, 208/70 = 2.9714).
 **If the GUI's two group sizes are in exact integer proportion `R`, the grid is
 per-group.** That is the cheapest single observation in this file.
+
+The signature is clean across the whole sweep. A sample of worked instances,
+one per ratio, all at `α = 0.05`, two tails:
+
+| `R` | `d` | target | `n1-grid` | realised ratio | `total-grid` | realised ratio |
+|---|---|---|---|---|---|---|
+| 0.5 | 0.25 | .80 | 379 / 190, `N = 569` | `0.5013` | 379 / 189, `N = 568` | `0.4987` |
+| 1.5 | 0.20 | .90 | 439 / 659, `N = 1098` | `1.5011` | 439 / 658, `N = 1097` | `1.4989` |
+| 2.0 | 0.20 | .90 | 395 / 790, `N = 1185` | **`2.0000`** | 395 / 789, `N = 1184` | `1.9975` |
+| 2.5 | 0.20 | .80 | 276 / 690, `N = 966` | **`2.5000`** | 276 / 689, `N = 965` | `2.4964` |
+| 3.0 | 0.20 | .80 | 263 / 789, `N = 1052` | **`3.0000`** | 263 / 787, `N = 1050` | `2.9924` |
+| 4.0 | 0.20 | .80 | 246 / 984, `N = 1230` | **`4.0000`** | 246 / 982, `N = 1228` | `3.9919` |
+
+Where `R` is an integer the `n1-grid` ratio is exact to every digit; the
+`total-grid` ratio never is. `R = 0.5` and `R = 1.5` are the weak rows —
+`R·n₁` is a half-integer for odd `n₁`, so neither rule can hit the ratio
+exactly — which is why the probe table above uses `R = 2` as its primary
+discriminator and treats `R = 0.5` as a control.
 
 ### Rounding-mode rows
 

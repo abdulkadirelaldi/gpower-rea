@@ -114,7 +114,7 @@ $ gpower selftest                         # 401/401 exact N
 | the MCP server works as a real stdio subprocess | `test_mcp_stdio_e2e.py` |
 | CLI contract (exit codes, schema, batch aliasing) | `test_cli.py` |
 
-Recorded result of the last full run: **676 passed, 1 skipped**,
+Recorded result of the last full run: **698 passed, 1 skipped**,
 `COMPLIANCE: PASS`, `selftest: 401/401 exact N matches (rate 1.0000)`.
 The skip is the clean-room conformance file, which runs only when a second
 implementation is present.

@@ -57,6 +57,53 @@ indicate operator error rather than a real difference):
 | `d = 0.50`, target `0.95` | (105,105) `0.9501287` | (104,105) `0.9492249` ✘ | `N = 210` |
 | `d = 0.62`, target `0.85` | (48,48) `0.8522730` | (47,48) `0.8485032` ✘ | `N = 96` |
 
+## The counter-examples are not an artefact of our search code
+
+A fair objection to the table above: those numbers come from this engine, so a
+bug in *our* integer search could manufacture a counter-example that does not
+exist. The objection is answerable without using our search at all.
+
+`statsmodels.stats.power.TTestIndPower.solve_power` returns the **continuous**
+per-group `n`, and its `power()` evaluates an unbalanced split directly. Both
+are third-party code. Under the two candidate grids the integer answer is then
+`2·⌈n_frac⌉` (per-group search) versus the smallest sufficient total
+(total-`N` search), and statsmodels' own power function says which one clears
+the target:
+
+| `d` | target | statsmodels `n_frac` | per-group grid | odd split | statsmodels power of the odd split | odd suffices? |
+|---|---|---|---|---|---|---|
+| 0.20 | 0.80 | `393.4057` | `N = 788` | (393,394) `N = 787` | `0.8000936` | **yes** |
+| 0.25 | 0.80 | `252.1275` | `N = 506` | (252,253) `N = 505` | `0.8005794` | **yes** |
+| 0.30 | 0.80 | `175.3847` | `N = 352` | (175,176) `N = 351` | `0.8002560` | **yes** |
+| 0.42 | 0.90 | `120.1003` | `N = 242` | (120,121) `N = 241` | `0.9009455` | **yes** |
+| 0.45 | 0.95 | `129.3112` | `N = 260` | (129,130) `N = 259` | `0.9502700` | **yes** |
+| 0.35 | 0.90 | `172.5157` | `N = 346` | (172,173) `N = 345` | `0.8999715` | no (control) |
+| 0.50 | 0.95 | `104.9279` | `N = 210` | (104,105) `N = 209` | `0.9492249` | no (control) |
+| 0.62 | 0.85 | `47.6941`  | `N = 96`  | (47,48) `N = 95`    | `0.8485031` | no (control) |
+
+Every row agrees with the engine-computed table above, from entirely separate
+code. Note also that `d = 0.20, power = .80 → N = 788` is the figure commonly
+quoted for that design, which is itself a small corroboration of F-05 and F-06.
+
+### How often does the grid choice matter? Half the time.
+
+Sweeping `d` from `0.100` to `1.200` against power `{.80, .90, .95}` — 474
+settings, all evaluated with statsmodels — the odd split already suffices in
+
+```
+  odd split already sufficient (the grids differ) : 238
+  odd split insufficient       (the grids agree)  : 236
+  -> the two candidate grids disagree on 50.2% of settings
+```
+
+So this is not an edge case to be waved away as rounding: on a balanced
+a-priori two-group *t* test, which search space the tool uses changes the
+answer about half the time. That is what makes the finding worth a probe
+rather than a footnote.
+
+`tests/test_reference_statsmodels_f05.py` re-derives this table on every run,
+so the claim cannot drift.
+
 ## Discriminating probe `P-05`
 
 ### Click path

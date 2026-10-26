@@ -164,8 +164,16 @@ split it. Observable consequence:
 
 That is not a rounding artefact; it is the shape of the search space. There
 exist parameter settings where an odd split `(n, n+1)` would already reach the
-target power and the tool nevertheless reports `(n+1, n+1)` — see E-005 for a
-worked instance. The repository pins the parity consequence in
+target power and the tool nevertheless reports `(n+1, n+1)`.
+
+**Such settings are the common case, not a curiosity.** Measured over a
+474-setting sweep (`d ∈ [0.100, 1.200]` × power `{.80, .90, .95}`), the odd
+split already suffices in **50.2 %** of them — so the two candidate grids
+disagree about half the time. The measurement is made with `statsmodels`'
+continuous solution and its own power function, i.e. without using this
+engine's search code at all; see E-005.
+
+The repository pins the parity consequence in
 `tests/test_engine_invariants.py::test_balanced_a_priori_never_returns_an_odd_total`.
 
 Minimum admissible design: `n₁ ≥ 2` and `n₂ ≥ 2`.
@@ -224,19 +232,36 @@ applies, so the choice is visible in every output rather than silent.
 ### F-09 — Allocation-ratio rounding
 `[REA-OPEN]` · evidence [E-009](docs/EVIDENCE/E-009-allocation-rounding.md)
 
-With allocation ratio `R = N₂/N₁ ≠ 1`, two candidate search grids reproduce
-all published outputs the authors could obtain, and they differ by one or two
-participants on about a third of parameter settings:
+With allocation ratio `R = N₂/N₁ ≠ 1`, two candidate search grids are both
+consistent with everything the documentation says:
 
 | rule | grid | group sizes |
 |---|---|---|
 | **`n1-grid`** (default) | `n₁ = 2, 3, 4, …` | `n₂ = round_half_up(R·n₁)` |
 | `total-grid` | `N = 4, 5, 6, …` | `n₁ = round_half_up(N/(1+R))`, `n₂ = N - n₁` |
 
-`n1-grid` always reproduces the ratio exactly; `total-grid` can minimise the
-total at the cost of a slightly different ratio, so `total-grid` never needs
+They are **not** a rounding apart. Measured over a 378-setting sweep
+(`R ∈ {0.5, 1.5, 2, 2.5, 3, 4}` × `d ∈ [0.20, 1.20]` × power `{.80, .90, .95}`):
+
+| | disagreement rate |
+|---|---|
+| overall | **75.7 %** |
+| `R = 0.5` | 12.7 % |
+| `R = 1.5` | 76.2 % |
+| `R = 2.0` | 88.9 % |
+| `R = 3.0` | 90.5 % |
+| `R = 4.0` | 95.2 % |
+
+and where they disagree the gap is 1 participant (34.9 % of all settings),
+2 (38.6 %) or 3 (2.1 %). So the choice of grid is not a detail: on an
+unbalanced design it changes the recruitment target most of the time.
+
+`n1-grid` always reproduces `R` exactly; `total-grid` minimises the total at
+the cost of a slightly different realised ratio, so `total-grid` never needs
 more participants than `n1-grid`
 (`tests/test_engine_invariants.py::test_total_grid_never_needs_more_than_n1_grid`).
+The exact-ratio property is the cheapest observation that separates them —
+see E-009.
 
 Rounding is **half-away-from-zero**, not Python's / IEEE's round-half-to-even:
 `round_half_up(2.5) = 3`. The distinction is observable whenever `R·n₁`
