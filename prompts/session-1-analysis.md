@@ -2,7 +2,7 @@
 
 The analysis session that ran G\*Power, wrote `SPEC.md`, `docs/EVIDENCE/`,
 `LEDGER.md` and the oracle. It is the session that produced this release
-(SPEC v1.2–v1.3, the 435 GUI readings). Its first prompt, verbatim — the
+(SPEC v1.2–v1.3, the 443 GUI readings). Its first prompt, verbatim — the
 assignment brief the student pasted, followed by the student's request:
 
 ```text

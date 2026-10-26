@@ -18,11 +18,11 @@ $ python -m pytest -q
 
 ---
 
-## 0. Against the real G\*Power — 435 recorded runs
+## 0. Against the real G\*Power — 443 recorded runs
 
 G\*Power 3.1.9.6 for macOS was driven through its GUI by
 `tools/rea_campaign.py` (black box, via the macOS Accessibility API —
-[REA-METHOD §4](REA-METHOD.md#4-the-probe-apparatus)) on 435 distinct inputs:
+[REA-METHOD §4](REA-METHOD.md#4-the-probe-apparatus)) on 443 distinct inputs:
 all six tests, all five analyses, both tail counts. Every number it printed is
 recorded in [`probes/observations/`](../probes/observations/) and re-scored
 against the current engine by `tools/rea_report.py`
@@ -30,19 +30,19 @@ against the current engine by `tools/rea_report.py`
 
 | | result |
 |---|---|
-| runs | **435** (all six tests, all five analyses) |
-| every printed field identical, at G\*Power's printed precision | **396** |
+| runs | **443** (all six tests, all five analyses) |
+| every printed field identical, at G\*Power's printed precision | **404** |
 | refused by G\*Power with an *Input error!* — and refused by the engine | **25** |
 | differ — all inside the two regions where G\*Power itself is inexact (F-14) | **14** |
-| **outside F-14** | **421 / 421** |
-| **a-priori total `N`, `N ≤ 1e7`** | **219 / 219 exact** |
+| **outside F-14** | **429 / 429** |
+| **a-priori total `N`, `N ≤ 1e7`** | **225 / 225 exact** |
 
 What this caught that nothing else could:
 
 | | before observation | after |
 |---|---|---|
-| a-priori `N`, all 219 rows | 149 / 219 (68.0 %) with the v1.1 rule | **219 / 219** |
-| a-priori `N`, unbalanced designs only | 44 / 114 (38.6 %) | **114 / 114** |
+| a-priori `N`, all 225 rows | 154 / 225 (68.4 %) with the v1.1 rule | **225 / 225** |
+| a-priori `N`, unbalanced designs only | 44 / 115 (38.3 %) | **115 / 115** |
 | negative effect, one tail, post hoc (`P-08-a`) | power `7.7e-06` | `0.8482542` = G\*Power |
 | inputs G\*Power refuses (F-15) | 7 answered anyway | all refused |
 | `d = 1e-5` a priori | refused (search cap `1e7`) | answered (`N ≈ 7.8e10`) |
@@ -61,11 +61,11 @@ best alternative fits 96 of 119 rows (81 %).
 
 ```console
 $ python tools/rea_report.py
-cases=435 match=396 both_refuse=25 mismatch=14 apriori_N_exact=219/223
+cases=443 match=404 both_refuse=25 mismatch=14 apriori_N_exact=225/229
 $ python -m pytest -q tests/test_gpower_observed.py
 ```
 
-(`apriori_N_exact` counts all 223 a-priori rows; the four it misses are the
+(`apriori_N_exact` counts all 229 a-priori rows; the four it misses are the
 `N > 1e7` rows of F-14, where G\*Power's own `N` is not the exact one —
 arbitrated in [E-014](EVIDENCE/E-014-far-tail-precision.md).)
 

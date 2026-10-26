@@ -304,7 +304,7 @@ report  n₁ = round_half_up(N / (1+R)),  n₂ = N - n₁
 This rule is called **`even-total`** and is the engine default. It reproduces
 **all 119** recorded a-priori two-group results of G\*Power (108 of them
 unbalanced) in `n₁`, `n₂` **and** *Actual power* to seven decimals; across all
-six tests, **213/213** a-priori totals with `N ≤ 1e7` are exact.
+six tests, **225/225** a-priori totals with `N ≤ 1e7` are exact.
 
 **How it was found.** v1.1 offered two candidates. Observation refuted both:
 

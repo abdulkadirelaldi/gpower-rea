@@ -26,14 +26,14 @@ with three independent oracles: a SciPy re-derivation, `statsmodels`, and a
 clean-room implementation written by a separate agent session. All four
 implemented the same plausible reading of the documentation, so they agreed
 with each other — and disagreed with G\\*Power on **32 % of all a-priori
-designs and 61 % of unbalanced ones**. Agreement between implementations is
+designs and 62 % of unbalanced ones**. Agreement between implementations is
 evidence that a specification is implemented, not that it is right. Only the
 reference program could say that.
 
 ## How these are kept from coming back
 
 * Every G\\*Power reading is a test: `tests/test_gpower_observed.py` re-runs the
-  engine on all 435 recorded inputs on every CI build.
+  engine on all 443 recorded inputs on every CI build.
 * The pre-registered predictions are never regenerated
   (`tools/probe_plan.py` refuses), so H-1 and H-2 stay visible in
   [`probes/REA-RESULTS.md`](probes/REA-RESULTS.md).

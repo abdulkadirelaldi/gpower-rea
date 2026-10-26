@@ -34,11 +34,11 @@ difference between *done* and *ready to be done*.
 | 18 | Numerics overhaul driven by (16) | log-scale quadrature, Φ-transition panels, `nct_sf`, `t_isf` | done |
 | 19 | **GUI driver** — G\*Power 3.1.9.6 for macOS driven black-box through the Accessibility API | `tools/gpower_ax.py`, `tools/rea_campaign.py` | done |
 | 20 | **Pre-registration stamped** — 26 supported, **2 refuted** (F-08, F-09) | `tools/stamp_worksheet.py`, `probes/REA-RESULTS.md` | done |
-| 21 | Mechanism probes — ratio sweep, fine power sweep, sign sweep, domain edges, 240-row random grid | 435 recorded runs | done |
+| 21 | Mechanism probes — ratio sweep, fine power sweep, sign sweep, domain edges, 240-row random grid | 443 recorded runs | done |
 | 22 | **Specification repair round 3** — F-05/F-06/F-08/F-09 rewritten from observation; F-14, F-15 added | `SPEC.md` v1.1 → **v1.2**, engine 1.1.0 → **1.2.0** | done |
 | 23 | Engine numerical defect found by observation — critical value `2.7e-6` off at `ν = 1e11` | Cornish–Fisher branch in `t_isf` (SPEC §4 item 6) | done |
 | 24 | Agent run live over the MCP server (Claude Code harness) — found an output defect, fixed | `agent/transcripts/` | done |
-| 25 | Second clean-room session, from SPEC v1.2 → 19 gaps; v1.3 (F-16) → 4 more, two settled by G\*Power (an **empty group** is a real G\*Power output) | `cleanroom/`, `SPEC-GAPS-v1.2.md`, `SPEC-GAPS-v1.3.md`; SPEC v1.3, engine 1.3.0 | done — **CONFORMING**, 219/219 against G\*Power ([CLEANROOM-PROTOCOL §4b](CLEANROOM-PROTOCOL.md)) |
+| 25 | Second clean-room session, from SPEC v1.2 → 19 gaps; v1.3 (F-16) → 4 more, two settled by G\*Power (an **empty group** is a real G\*Power output) | `cleanroom/`, `SPEC-GAPS-v1.2.md`, `SPEC-GAPS-v1.3.md`; SPEC v1.3, engine 1.3.0 | done — **CONFORMING**, 225/225 against G\*Power ([CLEANROOM-PROTOCOL §4b](CLEANROOM-PROTOCOL.md)) |
 
 ---
 
@@ -52,7 +52,7 @@ $ python tools/harvest.py
   UNEXPLAINED  0
   PENDING      3
 $ python tools/rea_report.py
-cases=435 match=396 both_refuse=25 mismatch=14 apriori_N_exact=219/223
+cases=443 match=404 both_refuse=25 mismatch=14 apriori_N_exact=225/229
 ```
 
 | field | value |
@@ -62,10 +62,10 @@ cases=435 match=396 both_refuse=25 mismatch=14 apriori_N_exact=219/223
 | Instrument | `tools/gpower_ax.py` — macOS Accessibility API; inputs typed into labelled fields, outputs read from the *Output parameters* panel, every input echo verified |
 | Operator | Claude Code session (analysis session, "Session A"), on the student's machine, with the student's permission |
 | Date | 2026-10-26 |
-| Runs recorded | **435** distinct inputs (`probes/observations/*.jsonl`) |
+| Runs recorded | **443** distinct inputs (`probes/observations/*.jsonl`) |
 | Pre-registered rows observed | 33 / 36 — the 3 F-11 rows need the effect-size drawer, which this build does not expose to the Accessibility API |
 | `CONTRADICTS` | 2 — `P-08-a` (F-08), `P-09-c` (F-09). Both findings were rewritten from the observations (SPEC v1.2) |
-| Outside F-14 | **421 / 421** identical in every printed field |
+| Outside F-14 | **429 / 429** identical in every printed field |
 
 The binary was not copied into the repository, not disassembled, not
 decompiled, and not inspected beyond its code signature.
@@ -148,7 +148,7 @@ Everything in this list is a command a reader can run:
 
 ```console
 $ python tools/compliance_check.py        # COMPLIANCE: PASS (C-1..C-5)
-$ python tools/rea_report.py              # the engine against 435 G*Power readings
+$ python tools/rea_report.py              # the engine against 443 G*Power readings
 $ python tools/make_vectors.py --check    # vectors are a function of the engine
 $ python -m pytest -q                     # property tests + SciPy re-derivation
 $ gpower selftest                         # 401/401 exact N

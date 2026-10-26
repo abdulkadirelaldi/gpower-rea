@@ -17,7 +17,7 @@
 | Oturum 2, round 3 (SPEC v1.3 → 4 gaps) | **211 400** (cumulative context) | — | 224 s | 10 tool calls |
 | live transcript run (`agent/transcripts/`) | — | **$0.19** | — | 7 turns, 5 tool calls |
 | 10-question evaluation ([agent/eval/REPORT.md](agent/eval/REPORT.md)) | **605 470 in / 9 832 out** | **$1.30** | 14.0 s / question | 1 run per question |
-| G\*Power GUI campaign | no model tokens — a deterministic driver (`tools/gpower_ax.py`) | $0 | ≈ 3 h of GUI time for 435 runs | 6 case sets + reruns |
+| G\*Power GUI campaign | no model tokens — a deterministic driver (`tools/gpower_ax.py`) | $0 | ≈ 3 h of GUI time for 443 runs | 6 case sets + reruns |
 
 Most of the evaluation's input tokens are the agent harness's own cached
 system prompt (≈ 60 k per question, served from the prompt cache); the

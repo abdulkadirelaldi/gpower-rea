@@ -95,7 +95,7 @@ seven-decimal *Actual power* all match.
 | `n1-grid` (v1.1 default) | 55 | 44 | 19 |
 
 (Refused inputs and the `N > 1e7` rows of F-14 are excluded. See also
-[VALIDATION §0](../VALIDATION.md#0-against-the-real-gpower--435-recorded-runs).)
+[VALIDATION §0](../VALIDATION.md#0-against-the-real-gpower--443-recorded-runs).)
 
 ## How much it matters
 

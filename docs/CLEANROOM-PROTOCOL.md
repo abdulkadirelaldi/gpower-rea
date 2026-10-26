@@ -118,7 +118,7 @@ v1.2). A rewritten specification is an untested one, so the protocol ran again.
 | Session B | a fresh agent session with no access to Session A's context; prompted to read only that directory, use no knowledge of G\*Power beyond the text, and report every gap instead of filling it |
 | returned | the updated package, 82 self-checks, and [`SPEC-GAPS-v1.2.md`](../cleanroom/SPEC-GAPS-v1.2.md) — **19 gaps**, each with a divergent input |
 | judged against the v1.2 contract | 401/401 vectors, every v1.2 SPEC property (F-02…F-15), 300/300 cross-grid |
-| **judged against the real G\*Power** | **212 / 213** recorded a-priori results — the miss, `D-28`, was its own gap G2-04. Its v1.3 version: **219 / 219**, verdict **CONFORMING** |
+| **judged against the real G\*Power** | **212 / 213** recorded a-priori results — the miss, `D-28`, was its own gap G2-04. Its v1.3 version: **225 / 225**, verdict **CONFORMING** |
 
 This round had something the first did not: the reference program. Twelve of
 the 19 gaps were questions about G\*Power, so they were **probed instead of
@@ -133,7 +133,7 @@ The judge now has a fourth criterion besides vectors, properties and the
 cross-grid: **every recorded G\*Power a-priori result** (`check_gpower_observations`).
 A clean room that agrees with the first implementation but not with the
 program is, after all, only a second copy of the same guess — which is
-precisely what the v1.1 clean room turned out to be (149/219 against
+precisely what the v1.1 clean room turned out to be (154/225 against
 G\*Power).
 
 ## 5. Specification gaps closed before the engine was written

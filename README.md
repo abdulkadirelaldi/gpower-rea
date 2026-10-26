@@ -11,8 +11,8 @@ them — from a CLI, from an MCP server, or in plain Turkish.**
 
 | | |
 |---|---|
-| **gate: hidden-vector style N, exact** | `gpower-clone` vs every G\*Power t2-indep reading: **125 / 125** a-priori `N` exact ([tests/UYUM-RAPORU.md](tests/UYUM-RAPORU.md)); all tests and analyses: 219 / 219 |
-| differential test | 435 G\*Power GUI runs; 421 / 421 identical outside F-14 ([VALIDATION §0](docs/VALIDATION.md#0-against-the-real-gpower--435-recorded-runs)) |
+| **gate: hidden-vector style N, exact** | `gpower-clone` vs every G\*Power t2-indep reading: **125 / 125** a-priori `N` exact ([tests/UYUM-RAPORU.md](tests/UYUM-RAPORU.md)); all tests and analyses: 225 / 225 |
+| differential test | 443 G\*Power GUI runs; 429 / 429 identical outside F-14 ([VALIDATION §0](docs/VALIDATION.md#0-against-the-real-gpower--443-recorded-runs)) |
 | evidence ledger | [LEDGER.md](LEDGER.md) — `[DOK]`, `[GÖZLEM]`, `[AJAN]`; **no `[REA]` (binary) lines: no static analysis was done in this work** |
 | hallucination log | [HALLUCINATIONS.md](HALLUCINATIONS.md) — 10 entries, each with the test that caught it |
 | spec | [SPEC.md](SPEC.md) v1.3, acceptance criteria in Gherkin (§6, executable: `tests/test_gherkin_spec.py`) |
@@ -159,10 +159,10 @@ real program** — G\*Power 3.1.9.6, driven black-box through its own GUI —
 documents every finding with `[GÖZLEM]` evidence, reimplements it clean-room, and
 gives it three interfaces.
 
-> **Against the real G\*Power: 435 recorded runs, 421/421 identical in every
+> **Against the real G\*Power: 443 recorded runs, 429/429 identical in every
 > printed field outside the one documented region where G\*Power itself is
-> inexact, and 219/219 exact a-priori sample sizes.**
-> ([VALIDATION §0](docs/VALIDATION.md#0-against-the-real-gpower--435-recorded-runs))
+> inexact, and 225/225 exact a-priori sample sizes.**
+> ([VALIDATION §0](docs/VALIDATION.md#0-against-the-real-gpower--443-recorded-runs))
 
 ```console
 $ gpower solve --test indep --alpha 0.05 --power 0.95 --effect-size 0.5
@@ -322,7 +322,7 @@ The assignment's question. The short answer this project arrived at:
 
 | # | check | result |
 |---|---|---|
-| 1 | **the real G\*Power 3.1.9.6**, driven through its GUI on 435 inputs | **421/421** outside F-14; **219/219** exact a-priori `N` |
+| 1 | **the real G\*Power 3.1.9.6**, driven through its GUI on 443 inputs | **429/429** outside F-14; **225/225** exact a-priori `N` |
 | 2 | pre-registered predictions, committed before G\*Power was run once | 26 supported, **2 refuted** (F-08, F-09) — kept in the record |
 | 3 | 401 reference vectors, exact integer `N` | 401/401 |
 | 4 | independent re-derivation: SciPy + brute-force search, from `SPEC.md` | 401/401 |
@@ -333,7 +333,7 @@ The assignment's question. The short answer this project arrived at:
 
 Check 1 is the one that changed the engine. Before it, checks 3–8 all passed —
 and the engine still disagreed with G\*Power on **32 % of a-priori designs
-(61 % of unbalanced ones)**, because SciPy, statsmodels and the first clean
+(62 % of unbalanced ones)**, because SciPy, statsmodels and the first clean
 room had all implemented the same guessed allocation rule. Observation found
 that rule wrong, a fine power sweep exposed the real one, and the same campaign
 found the negative-effect rule, the input domain, a large-`ν` numerical defect
@@ -341,7 +341,7 @@ in the engine, and two regions where G\*Power is itself inexact.
 
 ```console
 $ python -m pytest -q                     # 1541 passed, incl. every recorded G*Power reading
-$ python tools/rea_report.py              # cases=435 match=396 both_refuse=25 mismatch=14
+$ python tools/rea_report.py              # cases=443 match=404 both_refuse=25 mismatch=14
 $ python tools/fit_allocation.py          # F-09: 7 candidate rules vs the readings
 $ gpower selftest                         # 401/401 exact N matches (rate 1.0000)
 $ python tools/compliance_check.py        # COMPLIANCE: PASS (C-1..C-5)
@@ -414,7 +414,7 @@ tools/
   compliance_check.py        the submission rules, as a machine check
   publish.ps1                verify, commit and push (refuses if the gate fails)
 probes/
-  observations/*.jsonl       435 raw G*Power 3.1.9.6 readings (never edited)
+  observations/*.jsonl       443 raw G*Power 3.1.9.6 readings (never edited)
   REA-OBSERVED.md            the engine against every reading, field by field
   probe_worksheet.{csv,md}   36 pre-registered rows with competing predictions
   REA-RESULTS.md             per-finding verdict of the pre-registration
