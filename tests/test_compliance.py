@@ -14,10 +14,28 @@ def test_compliance_check_passes():
         [sys.executable, str(ROOT / "tools" / "compliance_check.py")],
         capture_output=True,
         text=True,
+        encoding="utf-8",
         cwd=str(ROOT),
     )
     assert proc.returncode == 0, proc.stdout + proc.stderr
     assert "COMPLIANCE: PASS" in proc.stdout
+    for rule in ("C-1", "C-2", "C-3", "C-4", "C-5"):
+        assert rule in proc.stdout, f"{rule} not reported"
+
+
+def test_text_files_are_clean_utf8():
+    """C-5, asserted directly as well as through the checker.
+
+    The documents carry Greek letters, em dashes and Turkish characters, and
+    they ARE the deliverable -- a tool that re-encodes on write silently turns
+    them into mojibake and nothing else would notice.
+    """
+    sys.path.insert(0, str(ROOT / "tools"))
+    from compliance_check import check_text_encoding
+
+    problems: list[str] = []
+    check_text_encoding(problems)
+    assert not problems, problems
 
 
 def test_vector_file_is_up_to_date():

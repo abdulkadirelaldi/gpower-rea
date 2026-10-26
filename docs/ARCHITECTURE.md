@@ -14,6 +14,7 @@ COMPLIANCE: PASS
   C-2 no decompiler / disassembler output
   C-3 one engine; CLI, MCP and agent are adapters over it
   C-4 findings <-> SPEC.md <-> docs/EVIDENCE are in sync
+  C-5 every text file is clean UTF-8 (no BOM, LF, no mojibake)
 ```
 
 `C-3` greps every module for `nct_cdf(` and fails if it appears outside

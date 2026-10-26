@@ -5,7 +5,7 @@
 
 PY ?= python
 
-.PHONY: help install install-all test gate compliance vectors probes check clean demo
+.PHONY: help install install-all test gate compliance vectors probes cleanroom check clean demo
 
 help:
 	@echo "install      editable install (engine + CLI, zero dependencies)"
@@ -15,6 +15,7 @@ help:
 	@echo "compliance   submission rules, as a machine check"
 	@echo "vectors      regenerate src/gpower_rea/data/public_vectors.csv"
 	@echo "probes       regenerate the GUI probe worksheet, then harvest"
+	@echo "cleanroom    judge the independent second implementation"
 	@echo "check        compliance + vectors freshness + tests + gate  (= CI)"
 	@echo "demo         run one example through all three interfaces"
 
@@ -39,6 +40,9 @@ vectors:
 probes:
 	$(PY) tools/probe_plan.py
 	$(PY) tools/harvest.py
+
+cleanroom:
+	$(PY) tools/judge_cleanroom.py
 
 check: compliance
 	$(PY) tools/make_vectors.py --check

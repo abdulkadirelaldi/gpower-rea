@@ -27,9 +27,16 @@ dependencies = []
 # installed and reports it via the engine_provenance tool.
 mcp = ["mcp>=1.2"]
 agent = ["anthropic>=0.116", "mcp>=1.2"]
-# scipy and mpmath are TEST-ONLY: they provide the second and third
-# independent oracles (docs/VALIDATION.md).  The engine never imports them.
-dev = ["pytest>=7.4", "scipy>=1.10", "mpmath>=1.3"]
+# scipy, mpmath and statsmodels are TEST-ONLY: they are the three independent
+# oracles described in docs/VALIDATION.md (a reference we wrote from SPEC.md,
+# a 50-digit arbiter, and an implementation written by other people).  The
+# engine never imports any of them.
+dev = [
+  "pytest>=7.4",
+  "scipy>=1.10",
+  "mpmath>=1.3",
+  "statsmodels>=0.14",
+]
 
 [project.scripts]
 gpower = "gpower_rea.cli:main"

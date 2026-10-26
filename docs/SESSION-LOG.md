@@ -19,7 +19,8 @@ difference between *done* and *ready to be done*.
 | 7 | Implementation from `SPEC.md` | `src/gpower_rea/` (engine, 6 procedures, numerics) | done |
 | 8 | Specification repair — four gaps found while implementing, fixed in `SPEC.md`, not guessed | see [CLEANROOM-PROTOCOL §5](CLEANROOM-PROTOCOL.md#5-specification-gaps-closed-before-the-engine-was-written) | done |
 | 9 | Independent re-derivation with SciPy + brute-force search | `tests/test_reference_scipy.py`, 401/401 | done |
-| 10 | Third-oracle arbitration where SciPy and the engine disagreed | two numerical defects found and fixed | done |
+| 9b | Agreement oracle written by other people (`statsmodels`) | `tests/test_reference_statsmodels.py`; independently confirms the F-02 far-tail term | done |
+| 10 | Arbitration by a 50-digit computation wherever a library disagreed | two numerical defects in the engine found and fixed; twice the library was the less accurate party | done |
 | 11 | Interfaces — CLI, MCP server, agent | `cli.py`, `mcp_server.py`, `agent/agent.py` | done |
 | 12 | Compliance automation | `tools/compliance_check.py` in CI | done |
 | 13 | **GUI probe execution** | `probes/REA-RESULTS.md` | **PENDING — 36 rows unobserved** |
@@ -105,10 +106,15 @@ $ gpower selftest                         # 401/401 exact N
 | engine imports with no third-party package | `test_compliance.py` |
 | vector file is not stale | `make_vectors.py --check` |
 | 401 vectors re-derived by an independent implementation | `test_reference_scipy.py` |
+| a third-party implementation agrees, far-tail term included | `test_reference_statsmodels.py` |
 | the engine's `t` quantile beats SciPy's, arbitrated by mpmath | `test_numerics.py` |
+| the engine beats statsmodels against an exact reference | `test_reference_statsmodels.py` |
+| every text file is intact UTF-8 (the evidence files are the deliverable) | `compliance_check.py` C-5 |
 | MCP tools return the engine's output verbatim | `test_mcp_server.py` |
 | the MCP server works as a real stdio subprocess | `test_mcp_stdio_e2e.py` |
 | CLI contract (exit codes, schema, batch aliasing) | `test_cli.py` |
 
-Recorded result of the last full run: **645 passed**, `COMPLIANCE: PASS`,
-`selftest: 401/401 exact N matches (rate 1.0000)`.
+Recorded result of the last full run: **676 passed, 1 skipped**,
+`COMPLIANCE: PASS`, `selftest: 401/401 exact N matches (rate 1.0000)`.
+The skip is the clean-room conformance file, which runs only when a second
+implementation is present.

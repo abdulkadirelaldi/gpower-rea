@@ -5,11 +5,15 @@ the probe harness that does. Every number below is reproducible from a clean
 checkout with the commands shown.
 
 Environment of the recorded run: CPython 3.12.1 on Windows 11, SciPy 1.14.1,
-mpmath 1.3, `mcp` 2.3.0, `anthropic` 2.3.0.
+statsmodels 0.15.0, mpmath 1.3, `mcp` 2.3.0, `anthropic` 2.3.0.
+
+The single skip is `tests/test_cleanroom_conformance.py`, which runs only when
+an independent second implementation is present
+(see [CLEANROOM-PROTOCOL.md](CLEANROOM-PROTOCOL.md)).
 
 ```console
 $ python -m pytest -q
-645 passed in 54.21s
+676 passed, 1 skipped in 78.93s
 ```
 
 ---
@@ -72,6 +76,66 @@ $ python -m pytest tests/test_reference_scipy.py -q
 This is the check that matters most, because the two most likely failure modes
 of the engine — a numerical slip in the quadrature, and an off-by-one in the
 integer search — are exactly what it is blind to in common with nothing.
+
+---
+
+## 2b. A third oracle written by other people — statsmodels
+
+The SciPy reference in §2 is powerful but shares one thing with the engine: we
+wrote it, from our own reading of `SPEC.md`. `statsmodels.stats.power` does
+not. It is an independent implementation of the same statistical procedures,
+written from the literature with no knowledge of this project, so agreeing
+with it tests the *reading* and not only the arithmetic.
+
+```console
+$ python -m pytest tests/test_reference_statsmodels.py -q
+30 passed
+```
+
+### What it confirms
+
+**statsmodels keeps the far-tail term of the two-tailed power expression.**
+This was worth measuring rather than assuming — the textbook shortcut would
+have been an easy thing for a library to take. Applying the
+[E-002](EVIDENCE/E-002-two-sided-far-tail.md) discriminator to statsmodels
+instead of to the GUI:
+
+| α | statsmodels at δ = 0, two-tailed | candidate A predicts | candidate B predicts |
+|---|---|---|---|
+| 0.05 | `0.0500000000` | `0.05` ✔ | `0.025` ✘ |
+| 0.10 | `0.1000000000` | `0.10` ✔ | `0.050` ✘ |
+| 0.20 | `0.2000000000` | `0.20` ✔ | `0.100` ✘ |
+
+So candidate A is the expression **two independent implementations arrived at**,
+which is considerably stronger than one implementation plus an argument from
+test size. A second, independent check at `d = 0.05, n = 100` per group — where
+the far-tail term is `1.0e-2`, ten orders of magnitude above the two libraries'
+disagreement there — gives the same answer.
+
+Agreement also holds across the designs statsmodels covers (balanced and
+unbalanced two-group, one-sample; both tail counts), to `1e-4`.
+
+### Why the tolerance is 1e-4 and not 1e-8
+
+Because statsmodels is an **agreement** oracle, not an **accuracy** oracle.
+Measured against an exact noncentral-*t* reference on the same grid:
+
+| | worst error, two-group | worst error, one-sample |
+|---|---|---|
+| **this engine** | **9.2e-12** | **1.2e-11** |
+| statsmodels 0.15 | 1.8e-05 | 7.2e-05 |
+
+statsmodels loses precision as power approaches 1. A pinned instance: at
+`d = 0.35, N = 300`, one sample, two-tailed, the exact power is
+`0.9999777374692...`; statsmodels returns exactly `1.0`, the engine returns the
+exact value to `1e-10`. Both facts are asserted in
+`test_statsmodels_saturates_to_one_where_the_engine_does_not`, so the
+tolerance above cannot quietly change meaning.
+
+This is the second time an external library turned out to be the less accurate
+party (the first is the `t` quantile in §3.2). It is the reason this project
+arbitrates disagreements with a 50-digit computation instead of deferring to
+whichever library is better known.
 
 ---
 
@@ -206,6 +270,7 @@ COMPLIANCE: PASS
   C-2 no decompiler / disassembler output
   C-3 one engine; CLI, MCP and agent are adapters over it
   C-4 findings <-> SPEC.md <-> docs/EVIDENCE are in sync
+  C-5 every text file is clean UTF-8 (no BOM, LF, no mojibake)
 ```
 
 `C-2` scans every text file for disassembly markers (`sub_XXXXXX`,
@@ -213,6 +278,15 @@ COMPLIANCE: PASS
 `nct_cdf(` outside the engine. `C-4` cross-references the `F-nn` tags used in
 `procedures.py` against `SPEC.md`, and the `E-nnn` citations in `SPEC.md`
 against `docs/EVIDENCE/` in both directions.
+
+`C-5` exists because of a near-miss during development. The documents carry
+Greek letters, em dashes and Turkish characters, and the evidence files *are*
+the deliverable; one pass of a tool that re-encodes on write (PowerShell's
+`Set-Content` is the classic offender) turned an entire document into mojibake
+and no test noticed. The rule now checks every text file for a BOM, invalid
+UTF-8, CRLF endings and the characteristic UTF-8-read-as-Latin-1 byte patterns,
+and it runs in CI. The damaged file was recovered from git, which is the other
+half of why the repository is committed early rather than at the end.
 
 ---
 

@@ -189,17 +189,46 @@ prompt from §3 verbatim. The agent sees `SPEC.md` and the test suite's
 
 ### Judging the result
 
-Do not diff the two implementations — they are allowed to differ. Judge
-against the frozen contract only:
+Do not diff the two implementations — they are allowed, and expected, to differ
+internally. Judge against the frozen contract only, which is what
+`tools/judge_cleanroom.py` does:
 
 ```console
-$ python -m pytest tests/ -q
-$ gpower selftest
+$ python tools/judge_cleanroom.py
+========================================================================
+CLEAN-ROOM CONFORMANCE REPORT
+========================================================================
+conformance vectors : .../401 exact N
+power within 5e-7   : .../401
+SPEC properties       F-02 F-03 F-04 F-05 F-06/F-12 F-07 F-09
+Analysis-type round trips
+Cross-implementation grid: .../300 identical
+Independence check (lexical overlap with the shipped engine)
+VERDICT: ...
 ```
 
-A second independent implementation that passes both is a far stronger
-validation of `SPEC.md` than any prose about it. If it *fails*, the failure is
-a specification bug, and the fix belongs in `SPEC.md`.
+It checks four things:
+
+1. the **same 401 conformance vectors** at the **same tolerances** the shipped
+   engine is held to (exact integer `N`, `5e-7` on power);
+2. the SPEC properties that are discriminating — the two-sided size at the
+   null (F-02), the three cross-entry identities (F-03/F-04/F-07), the parity
+   consequence of the balanced grid (F-05), the ratio signature of the default
+   allocation rule (F-09), and the tightest-margin minimality case (F-12);
+3. round trips between all five analysis types;
+4. **independence**: lexical overlap with the shipped engine. A clean-room
+   implementation should share the vocabulary of the domain (`alpha`, `power`,
+   `noncentrality`) and nothing else. Shared *private* helper names or verbatim
+   comment lines would mean the boundary leaked, and the report names them.
+
+The same checks run as `tests/test_cleanroom_conformance.py`, which skips
+itself when no clean-room implementation is present — so the main suite stays
+runnable for anyone who has not performed the second session.
+
+A second independent implementation that conforms is a far stronger validation
+of `SPEC.md` than any prose about it. If it *diverges*, the divergence is a
+specification bug first and an implementation bug second: read the gap report
+Session B was asked to produce, and fix `SPEC.md`.
 
 ### Signing
 

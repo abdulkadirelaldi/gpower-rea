@@ -1,65 +1,60 @@
 # PUBLISH.md — getting this repository onto GitHub
 
-The deliverable is a GitHub repository link. Git is **not installed** on the
-machine this was built on, so the publish step is the one thing left to run.
-It takes about three minutes.
+The deliverable is a GitHub repository link. **Almost everything is already
+done**: git and the GitHub CLI are installed, the repository is initialised,
+and the work is committed and tagged. What remains needs *your* GitHub
+credentials, which is not something a tool can supply for you.
+
+## Current state
+
+| | |
+|---|---|
+| git | installed at `%LOCALAPPDATA%\Programs\MinGit` (portable, no admin needed) and added to your user `PATH` |
+| GitHub CLI | installed at `%LOCALAPPDATA%\Programs\gh\bin`, also on your `PATH` |
+| repository | initialised on branch `main`, 56 files committed |
+| tag | `spec-frozen-v1.0` marks the clean-room handover point |
+| identity | `user.name = "Abdulkadir Elaldi"`, `user.email = "elaldiabdulkadir1@gmail.com"` — change it with `git config user.name "..."` if the spelling is wrong **before** you push |
+| remote | not set — this is the step below |
+
+> If `git` is not found in a terminal that was already open, close and reopen
+> it; `PATH` changes only reach new processes.
 
 ---
 
-## Fast path (PowerShell)
+## The two commands that remain
 
 ```powershell
-# 1. Install git and the GitHub CLI (once)
-winget install --id Git.Git      --source winget --accept-package-agreements
-winget install --id GitHub.cli   --source winget --accept-package-agreements
-# close and reopen the terminal so PATH picks them up
-
-# 2. Verify the repository still passes everything before publishing
 cd "$env:USERPROFILE\OneDrive\Desktop\yazılımtest\gpower-rea"
-python tools\compliance_check.py
-python tools\make_vectors.py --check
-python -m pytest -q
-gpower selftest
 
-# 3. Publish
+gh auth login                                  # opens a browser; pick HTTPS
 .\tools\publish.ps1 -RepoName gpower-rea -Public
 ```
 
-`tools/publish.ps1` runs the four checks again, refuses to continue if any
-fails, then creates the commit and the GitHub repository. Pass `-Private`
-instead of `-Public` if the course wants it private.
+`tools/publish.ps1` re-runs the whole gate — compliance check, vector
+freshness, the test suite, `gpower selftest` — and **refuses to publish if any
+of them fails**. Then it creates the GitHub repository and pushes. Pass
+`-Private` instead of `-Public` if the course wants it private.
 
 ---
 
-## Manual path
+## Manual path (no `gh`)
 
-If you prefer to do it by hand, or `gh` is unavailable:
+Create an **empty** repository named `gpower-rea` on github.com — no README,
+no .gitignore, no licence, or the first push is rejected as a
+non-fast-forward. Then:
 
 ```powershell
 cd "$env:USERPROFILE\OneDrive\Desktop\yazılımtest\gpower-rea"
-
-git init -b main
-git config user.name  "Your Name"
-git config user.email "you@example.com"
-git add -A
-git status --short          # sanity check: no .exe, no __pycache__
-
-git commit -m @'
-gpower-rea: clean-room engine, CLI, MCP server and agent for the G*Power t-test family
-
-Behavioural reverse engineering of the G*Power 3.1 "t tests" family:
-12 findings in SPEC.md, one evidence file each, 36-row discriminating
-probe worksheet. Clean-room engine with zero runtime dependencies,
-401/401 exact sample-size agreement, independently re-derived with SciPy.
-'@
-
-# then, on github.com, create an EMPTY repository named gpower-rea and:
 git remote add origin https://github.com/<your-user>/gpower-rea.git
-git push -u origin main
+git push -u origin main --follow-tags
 ```
 
-Create the repository **empty** — no README, no .gitignore, no licence —
-otherwise the first push is rejected as a non-fast-forward.
+Git will prompt for credentials on the first push. Use a
+[personal access token](https://github.com/settings/tokens) as the password,
+not your account password.
+
+The commit already exists, so there is nothing else to do — `git log --oneline`
+should show one commit tagged `spec-frozen-v1.0`.
 
 ---
 

@@ -11,6 +11,7 @@ Rules enforced (assignment "TEMEL KURALLAR" 3 and 4):
        must import the engine rather than reimplement it.
   C-4  Every finding referenced by a procedure must exist in SPEC.md, and
        every finding in SPEC.md must have an evidence file.
+  C-5  Every text file is clean UTF-8 (no BOM, LF endings, no mojibake).
 
 Exit code 0 = compliant, 1 = violation(s).  Wired into CI.
 """
@@ -171,12 +172,54 @@ def check_findings_and_evidence(problems: list[str]) -> None:
         problems.append(f"C-4 evidence files not cited by SPEC.md: {unused}")
 
 
+# --------------------------------------------------------------------------
+# C-5 -- text encoding hygiene
+#
+# The documents in this repository carry Greek letters, em dashes and Turkish
+# characters, and the evidence files are the deliverable.  A single pass of a
+# tool that re-encodes on write (PowerShell's Set-Content is the classic one)
+# silently turns them into mojibake, which no test would otherwise catch.
+# This rule exists because exactly that happened once during development.
+# --------------------------------------------------------------------------
+# Derived rather than written out: encoding each character as UTF-8 and then
+# decoding it as Latin-1 reproduces exactly what the damage looks like.  This
+# way the checker's own source contains only correct characters, so the rule
+# does not flag itself.
+_MOJIBAKE_SOURCES = ("—", "’", "≡", "√", "ü", "ç", "ı", "ö", "ş", "ğ")
+MOJIBAKE_MARKERS = tuple(
+    ch.encode("utf-8").decode("latin-1") for ch in _MOJIBAKE_SOURCES
+)
+
+
+def check_text_encoding(problems: list[str]) -> None:
+    for path in _walk():
+        if path.suffix.lower() not in TEXT_SUFFIXES:
+            continue
+        rel = path.relative_to(ROOT).as_posix()
+        raw = path.read_bytes()
+        if raw.startswith(b"\xef\xbb\xbf"):
+            problems.append(f"C-5 UTF-8 BOM in {rel}")
+            continue
+        try:
+            text = raw.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            problems.append(f"C-5 not valid UTF-8: {rel} ({exc.reason})")
+            continue
+        if "\r\n" in text:
+            problems.append(f"C-5 CRLF line endings in {rel}")
+        for marker in MOJIBAKE_MARKERS:
+            if marker in text:
+                problems.append(f"C-5 mojibake {marker!r} in {rel}")
+                break
+
+
 def main() -> int:
     problems: list[str] = []
     check_no_binary(problems)
     check_no_decompiler_output(problems)
     check_single_engine(problems)
     check_findings_and_evidence(problems)
+    check_text_encoding(problems)
 
     if problems:
         print("COMPLIANCE: FAIL")
@@ -188,6 +231,7 @@ def main() -> int:
     print("  C-2 no decompiler / disassembler output")
     print("  C-3 one engine; CLI, MCP and agent are adapters over it")
     print("  C-4 findings <-> SPEC.md <-> docs/EVIDENCE are in sync")
+    print("  C-5 every text file is clean UTF-8 (no BOM, LF, no mojibake)")
     print()
     print("  C-2 marker scan skips these files, which describe the rule itself:")
     for name, reason in sorted(MARKER_EXEMPT.items()):

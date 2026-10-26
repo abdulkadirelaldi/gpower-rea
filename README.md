@@ -156,17 +156,21 @@ installation at all:
 |---|---|---|
 | 1 | 401 reference vectors, exact integer `N` | **401 / 401** |
 | 2 | independent re-derivation: SciPy + brute-force linear search, from `SPEC.md` | **401 / 401**, post-hoc power within `1e-10` |
-| 3 | property tests: monotonicity, minimality, five-way round trips, three cross-entry identities | all pass, no golden values involved |
-| 4 | third-oracle arbitration (mpmath, 50 digits) where the engine and SciPy disagree | engine `3.8e-15` vs SciPy `7.9e-11`; **two numerical defects found and fixed this way** |
-| 5 | 36-row GUI probe worksheet with pre-registered competing predictions | generated and runnable, **0 rows observed** |
+| 3 | an implementation written by *other people* (`statsmodels`) | agrees, **including the far-tail term of F-02** — so that formula is what two unrelated implementations arrived at |
+| 4 | property tests: monotonicity, minimality, five-way round trips, three cross-entry identities | all pass, no golden values involved |
+| 5 | arbitration by a 50-digit `mpmath` computation wherever the engine and a library disagree | engine `3.8e-15` vs SciPy `7.9e-11`; statsmodels is off by up to `7.2e-5` near power 1 vs the engine's `1.2e-11`. **Two numerical defects in the engine were found and fixed this way** |
+| 6 | 36-row GUI probe worksheet with pre-registered competing predictions | generated and runnable, **0 rows observed** |
+
+The rule the project settled on: *a second implementation settles what the
+answer is; only a higher-precision computation settles who is right.*
 
 Numbers, grids and tolerances in [docs/VALIDATION.md](docs/VALIDATION.md).
-Check 5 and the two-session attestation are **unsigned**, and
+Check 6 is **unsigned** — it needs a G\*Power installation — and
 [docs/SESSION-LOG.md](docs/SESSION-LOG.md) says so in a table rather than
 burying it.
 
 ```console
-$ python -m pytest -q                     # 645 passed
+$ python -m pytest -q                     # 676 passed
 $ gpower selftest                         # 401/401 exact N matches (rate 1.0000)
 $ python tools/compliance_check.py        # COMPLIANCE: PASS (C-1..C-4)
 $ python tools/make_vectors.py --check    # vectors are a function of the engine
@@ -225,6 +229,7 @@ tools/
   probe_plan.py              generate the GUI probe worksheet
   harvest.py                 stamp observations into a verdict per finding
   make_vectors.py            regenerate / verify the vector file
+  judge_cleanroom.py         hold the independent 2nd implementation to the contract
   compliance_check.py        the submission rules, as a machine check
   publish.ps1                verify, commit and push (refuses if the gate fails)
 probes/
@@ -234,11 +239,14 @@ tests/
   test_numerics.py           accuracy, self-consistency, mpmath arbitration
   test_engine_invariants.py  monotonicity, minimality, round trips, identities
   test_reference_scipy.py    all 401 vectors re-derived independently
+  test_reference_statsmodels.py  agreement with a third-party implementation
   test_cli.py                the CLI contract
   test_mcp_server.py         MCP tools == engine output
   test_mcp_stdio_e2e.py      the server as a real subprocess over stdio
   test_effectsize.py         both pooling options (F-11)
+  test_cleanroom_conformance.py  the 2nd implementation, same contract
   test_compliance.py         the submission rules
+cleanroom/src/gpower_cleanroom/  the independent 2nd implementation (Session B)
 ```
 
 ---

@@ -171,7 +171,7 @@ so the apparatus is incremental.
 ## 5. Proving correctness *without* the oracle
 
 The oracle is not always available — not on CI, not on a grader's machine, not
-for a reader of this repository. Four independent checks therefore run with no
+for a reader of this repository. Five independent checks therefore run with no
 G\*Power present at all.
 
 ### 5.1 An independent re-implementation of the same spec
@@ -190,7 +190,30 @@ This catches exactly the class of bug the engine is most exposed to: a
 numerical slip in the hand-written quadrature, or an off-by-one in the
 bracketing search.
 
-### 5.2 Property tests instead of golden values
+### 5.2 An implementation written by other people
+
+`tests/test_reference_statsmodels.py` compares against
+`statsmodels.stats.power` — not a reference we wrote, but an independent
+implementation of the same procedures from the statistical literature.
+
+That distinction carries real weight: §5.1 shares our *reading* of `SPEC.md`,
+so it can catch a miscomputation but never a misreading. statsmodels can. And
+on the finding where a misreading was most plausible — whether the two-tailed
+expression keeps the far-tail term (E-002) — it independently keeps it, at
+every `α` tested. Candidate A is thus the expression two unrelated
+implementations arrived at, which is a different kind of evidence from an
+argument about test size.
+
+It is used strictly as an **agreement** oracle, never an accuracy one.
+Measured against an exact noncentral-*t* reference, statsmodels' own error
+reaches `7.2e-5` as power approaches 1 — it can return exactly `1.0` where the
+truth is `0.99997773…` — against `1.2e-11` for this engine. Bounding the
+engine with it would have capped the project at its weakest dependency's
+precision. The two roles are kept apart in
+[VALIDATION.md §2b](VALIDATION.md) and the gap is pinned by a test so it
+cannot quietly change meaning.
+
+### 5.3 Property tests instead of golden values
 
 `tests/test_engine_invariants.py` encodes properties that any correct
 implementation must satisfy, so they stay meaningful even if every golden
@@ -205,9 +228,10 @@ number were wrong:
   reproduces the target; compromise satisfies `β/α = q` and `power = 1-β`;
 * the three cross-entry identities of §3 hold exactly.
 
-### 5.3 Third-oracle arbitration where the second oracle is wrong
+### 5.4 Arbitration by a fourth oracle, where the others are wrong
 
-SciPy is not ground truth. At `df = 75, p = 0.95` the central-*t* quantile is
+Neither SciPy nor statsmodels is ground truth. At `df = 75, p = 0.95` the
+central-*t* quantile is
 
 ```
 exact (mpmath, 50 digits)  1.6654253733225633
@@ -217,12 +241,18 @@ SciPy 1.14                 1.6654253734015287   (7.9e-11 off)
 
 The critical value feeds every power number in the project, so "trust SciPy"
 would have quietly capped the engine's accuracy four orders of magnitude below
-what it achieves. Whenever the engine and SciPy disagree beyond `1e-13`, a
-50-digit `mpmath` computation arbitrates, and the result is recorded in
-[VALIDATION.md](VALIDATION.md). Two numerical defects were found and fixed
-this way (both documented in [SPEC §4](../SPEC.md#4-numerical-requirements)).
+what it achieves. Whenever the engine and an external library disagree beyond
+`1e-13`, a 50-digit `mpmath` computation arbitrates, and the result is recorded
+in [VALIDATION.md](VALIDATION.md). Two numerical defects in the engine were
+found and fixed this way (both documented in
+[SPEC §4](../SPEC.md#4-numerical-requirements)), and twice the external library
+turned out to be the less accurate party.
 
-### 5.4 Self-consistency of the quadrature
+The general rule the project ended up with: **a second implementation settles
+what the answer is; only a higher-precision computation settles who is right.**
+Conflating the two is how a project inherits a dependency's error bar.
+
+### 5.5 Self-consistency of the quadrature
 
 The noncentral-*t* CDF is evaluated as `E_S[Φ(t·S − δ)]`. The weight `S`
 integrates to 1 by construction, so integrating the quadrature weights alone

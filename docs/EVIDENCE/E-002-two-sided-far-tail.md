@@ -70,6 +70,39 @@ than a formula difference.
 Recorded in `probes/REA-RESULTS.md` (rows `P-02-a` … `P-02-d`) once the
 worksheet is filled in from the GUI.
 
+## Independent corroboration: another implementation keeps the term too
+
+The same discriminator can be applied to a *different* power-analysis library
+rather than to the GUI. `statsmodels.stats.power` is written by other people,
+from the statistical literature, with no knowledge of this project — so what it
+does is independent evidence about which expression practitioners' tools
+actually implement.
+
+Measured (`tests/test_reference_statsmodels.py`):
+
+| α | statsmodels at δ = 0, two tails | candidate A | candidate B |
+|---|---|---|---|
+| 0.05 | `0.0500000000` | `0.05` ✔ | `0.025` ✘ |
+| 0.10 | `0.1000000000` | `0.10` ✔ | `0.050` ✘ |
+| 0.20 | `0.2000000000` | `0.20` ✔ | `0.100` ✘ |
+
+A second check away from the null, where the term is large enough that no
+tolerance argument applies: at `d = 0.05` with `n₁ = n₂ = 100`, the far-tail
+term is `1.04e-2`. The engine and statsmodels agree to `1e-9` there, and the
+truncated formula differs from both by more than `1e-3`.
+
+**This was worth measuring rather than assuming.** The initial expectation
+when writing this file was that a widely used library would take the textbook
+shortcut and that the gap would show up as evidence *against* statsmodels.
+It did not: the small residual disagreement between the two libraries is
+statsmodels' own numerical error (up to `7.2e-5` as power approaches 1, versus
+`1.2e-11` for this engine — see [VALIDATION.md §2b](../VALIDATION.md)), not a
+difference of formula.
+
+So candidate A is the expression **two independent implementations arrived at**.
+That does not by itself settle what G\*Power does — only probe `P-02` does
+that — but it does mean candidate B would be the odd one out.
+
 ## Secondary, model-internal argument
 
 Candidate A is the only one under which the two-sided test has size exactly
