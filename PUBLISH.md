@@ -11,7 +11,7 @@ $ python tools/make_vectors.py --check    # the 401 vectors are a function of th
 $ gpower selftest                         # 401/401 exact N
 $ python -m pytest -q                     # incl. every recorded G*Power reading
 $ python tools/judge_cleanroom.py --strict
-$ python tools/stamp_worksheet.py && python tools/harvest.py && python tools/rea_report.py
+$ python tools/stamp_worksheet.py && python tools/harvest.py --record && python tools/rea_report.py
 $ git diff --exit-code -- probes/         # the recorded evidence and its reports are current
 ```
 

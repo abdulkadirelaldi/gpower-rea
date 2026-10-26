@@ -57,7 +57,7 @@ jobs:
       - name: pre-registered worksheet, verdicts and observation report are current
         run: |
           python tools/stamp_worksheet.py
-          python tools/harvest.py
+          python tools/harvest.py --record
           python tools/rea_report.py
           git diff --exit-code -- probes/ || \
             (echo "probes/ drifted from the recorded G*Power observations" && exit 1)

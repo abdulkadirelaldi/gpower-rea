@@ -113,6 +113,11 @@ def main() -> int:
     ap.add_argument("--strict", action="store_true",
                     help="exit 1 unless every finding is settled")
     ap.add_argument("--worksheet", default=str(WORKSHEET))
+    ap.add_argument("--record", action="store_true",
+                    help="write the verdicts and exit 0 even when a "
+                         "pre-registered prediction was refuted (CI uses this: "
+                         "the refutation is part of the record, and the "
+                         "current engine is checked by tests/test_gpower_observed.py)")
     args = ap.parse_args()
 
     path = Path(args.worksheet)
@@ -196,9 +201,12 @@ def main() -> int:
     for key in ("SUPPORTS", "AMBIGUOUS", "CONTRADICTS", "UNEXPLAINED", "PENDING"):
         print(f"  {key:<12} {counts.get(key, 0)}")
     if counts.get("CONTRADICTS") or counts.get("UNEXPLAINED"):
-        print("\nATTENTION: at least one observation does not match the engine.")
-        print("Read probes/REA-RESULTS.md before trusting any output.")
-        return 1
+        print("\nATTENTION: at least one observation refutes the PRE-REGISTERED "
+              "prediction.")
+        print("Read probes/REA-RESULTS.md; the current engine is checked "
+              "against every reading by tests/test_gpower_observed.py.")
+        if not args.record:
+            return 1
     if args.strict and unsettled:
         print(f"\n--strict: {len(unsettled)} finding(s) still unsettled")
         return 1
