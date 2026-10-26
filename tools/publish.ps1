@@ -147,17 +147,29 @@ if (-not $Public -and -not $Private) {
     Write-Host "neither -Public nor -Private given; defaulting to --public"
 }
 
-$existing = git remote get-url origin 2>$null
+# `git remote get-url origin` writes to stderr when there is no origin, which
+# PowerShell turns into a terminating error under $ErrorActionPreference =
+# "Stop".  List the remotes instead -- that never fails.
+$existing = $null
+if ((git remote) -contains "origin") {
+    $existing = git remote get-url origin
+}
 if ($existing) {
     Write-Host "origin already set to $existing -- pushing"
-    git push -u origin main
+    git push -u origin main --follow-tags
 } else {
     gh repo create $RepoName $visibility --source=. --remote=origin --push `
         --description "Clean-room engine, CLI, MCP server and AI agent for the G*Power t-test family"
+    if ($LASTEXITCODE -ne 0) { Fail "gh repo create failed" }
+    Write-Host "pushing tags"
+    git push origin --tags
 }
 
 Step "done"
-$url = git remote get-url origin 2>$null
+$url = $null
+if ((git remote) -contains "origin") {
+    $url = git remote get-url origin
+}
 if ($url) {
     $url = $url -replace '\.git$', ''
     Write-Host "Repository: $url"
